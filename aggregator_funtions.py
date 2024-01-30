@@ -126,12 +126,8 @@ def get_quantile_inputs_from_users():
 
     # Display the widgets
     display(message_label)
-    display(dropdown_working, slider_working)
-    display(dropdown_nonworking, slider_nonworking)
-    display(dropdown_weekend, slider_weekend)
-    display(widgets.HBox([dropdown_night_start, dropdown_night_end]))  # Display night start and end dropdowns side by side
 
-    # You can return the widget objects if you need to access their values later
+    
     return (dropdown_working, slider_working, dropdown_nonworking, slider_nonworking, dropdown_weekend, slider_weekend, dropdown_night_start, dropdown_night_end)
     
     
@@ -193,6 +189,7 @@ def occupancy_status_profile(df_houses: pd.DataFrame(), wd):
             if row['average_occ'] > 0:
                 df_final.at[index, 'Occupancy'] = True
     print("The aggregation is done")
+    df_final= pd.to_csv("Final_profiles.csv")
     return df_final
 
 
@@ -208,4 +205,6 @@ def display_results(df_final:pd.DataFrame()):
 
     plt.xticks(rotation=0)
     plt.show()
+    print(f"number of houses= {len(df_final.Identifier.unique())} houses")
     print(f"Occupied hours= {round(percentages[True].mean()*100,0)}%")
+    
