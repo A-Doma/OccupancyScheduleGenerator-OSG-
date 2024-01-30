@@ -25,8 +25,10 @@ def get_initial_input_form_user(path: str):
         print(f"'{path_to_check}' is not a valid file or directory path.")
         return None
     else:
-        files= os.listdir(old_path)
-        os.chdir(old_path)
+        files= os.listdir(path)
+        os.chdir(path)
+        print(f"Total number of file= {len(files)}")
+        print("The filtering process is starting now")
         return files
     
     
@@ -134,26 +136,26 @@ def get_quantile_inputs_from_users():
     
     
     
-def occupancy_status_profile(df_houses: pd.DataFrame(), widgets):
+def occupancy_status_profile(df_houses: pd.DataFrame(), wd):
     """ convert the average occ to 0,1 depend on the selected metrics 
 
     
      Args:
     - df_houses: aggregated dataframe with average occupancy values
-    - widgets: the results chosen by users from the sliders 
+    - wd: the results chosen by users from the sliders 
     
     Returns:
     - df_final: dataframe for all houses with the following columns (date_time, Identifier, day, hour, sensors with Occ data)
     """
     #extract the metrics
     metric_values = {
-    "working hours": widgets[2 * [widgets[i].value for i in range(0, 6, 2)].index("working hours") + 1].value,
-    "nonworking hours": widgets[2 * [widgets[i].value for i in range(0, 6, 2)].index("nonworking hours") + 1].value,
-    "weekends hours": widgets[2 * [widgets[i].value for i in range(0, 6, 2)].index("weekends hours") + 1].value
+    "working hours": wd[2 * [wd[i].value for i in range(0, 6, 2)].index("working hours") + 1].value,
+    "nonworking hours": wd[2 * [wd[i].value for i in range(0, 6, 2)].index("nonworking hours") + 1].value,
+    "weekends hours": wd[2 * [wd[i].value for i in range(0, 6, 2)].index("weekends hours") + 1].value
     }
-    metric_working= metric_values['working hours']
-    metric_nonworking= metric_values['nonworking hours']
-    metric_weekend= metric_values['weekends hours']
+    metric_working= metric_values['working hours']/100
+    metric_nonworking= metric_values['nonworking hours']/100
+    metric_weekend= metric_values['weekends hours']/100
     
     #calculate the mertics
     df_houses['date'] = pd.to_datetime(df_houses['date'])
