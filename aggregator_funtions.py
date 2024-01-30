@@ -30,12 +30,11 @@ def get_initial_input_form_user(path: str):
         return files
     
     
-def filter_sensor_data(files: list, ext:str):
+def filter_sensor_data(files: list):
     """ Filter occupancy data.
     
     Args:
     - files: list of all the parquet files 
-    - ext: the extension of the raw data.
     
     Returns:
     - df_total: dataframe for all houses with the following columns (date_time, Identifier, day, hour, sensors with Occ data)
