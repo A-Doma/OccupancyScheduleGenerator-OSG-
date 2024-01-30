@@ -5,6 +5,7 @@ warnings.filterwarnings('ignore')
 import ipywidgets as widgets
 from ipywidgets import interact
 from IPython.display import display
+import matplotlib.pyplot as plt
 
 def get_initial_input_form_user(path: str):
     """ Gets the path to the raw data from users and generate list of the files
@@ -192,3 +193,18 @@ def occupancy_status_profile(df_houses: pd.DataFrame(), widgets):
                 df_final.at[index, 'Occupancy'] = True
     print("The aggregation is done")
     return df_final
+
+
+def display_results(df_final:pd.DataFrame()):
+    
+    # Calculate the percentage of True and False values for each hour
+    percentages = df_final.groupby('hour')['Occupancy'].value_counts(normalize=True).unstack().fillna(0)
+
+    # Plotting
+    percentages[True].plot(kind='line', figsize=(12, 6))
+    plt.xlabel('Hour of the Day')
+    plt.ylabel('Aggregated Occupied Probability')
+
+    plt.xticks(rotation=0)
+    plt.show()
+    print(f"Occupied hours= {round(percentages[True].mean()*100,0)}%")
