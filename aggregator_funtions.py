@@ -185,7 +185,7 @@ def occupancy_status_profile(df_houses: pd.DataFrame(), wd):
         df_quantile= pd.concat([df_quantile, dz], ignore_index=True)
     #compare and convert
     df_final= df_houses.merge(df_quantile, on=['Identifier', 'hour'])
-    df_final['Occupancy']= df_comp['average_occ']>= df_comp['quantile']
+    df_final['Occupancy']= df_final['average_occ']>= df_final['quantile']
     # Additional step for night hours
     night_start, night_end = night
     for index, row in df_final.iterrows():
