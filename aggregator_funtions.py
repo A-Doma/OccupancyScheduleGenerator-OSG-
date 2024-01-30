@@ -27,7 +27,7 @@ def get_initial_input_form_user(path: str):
     else:
         files= os.listdir(path)
         os.chdir(path)
-        print(f"Total number of file= {len(files)}")
+        print(f"Total number of files= {len(files)}")
         print("The filtering process is starting now")
         return files
     
