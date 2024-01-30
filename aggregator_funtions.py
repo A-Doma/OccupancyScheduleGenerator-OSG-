@@ -95,7 +95,8 @@ def occupancy_hourly_average(df_total: pd.DataFrame()):
 
 def get_quantile_inputs_from_users():
     message_label = widgets.Label('Please choose different values for the 3 hours types')
-    # Create dropdowns and sliders for each metric
+
+    # Existing widgets for working, nonworking, and weekend hours
     dropdown_working = widgets.Dropdown(options=['working hours', 'nonworking hours', 'weekends hours'], description='Metric 1:')
     slider_working = widgets.IntSlider(value=10, min=0, max=100, step=5, description='Value 1:')
 
@@ -105,10 +106,14 @@ def get_quantile_inputs_from_users():
     dropdown_weekend = widgets.Dropdown(options=['working hours', 'nonworking hours', 'weekends hours'], description='Metric 3:')
     slider_weekend = widgets.IntSlider(value=10, min=0, max=100, step=5, description='Value 3:')
 
+    # New widgets for night definition
+    dropdown_night_start = widgets.Dropdown(options=list(range(24)), description='Night Start:')
+    dropdown_night_end = widgets.Dropdown(options=list(range(24)), description='Night End:')
+
     def update_message(*args):
         selected_values = [dropdown_working.value, dropdown_nonworking.value, dropdown_weekend.value]
         if len(set(selected_values)) == 3:
-            message_label.value = 'Selection complete.'
+            message_label.value = 'Selection complete. Please also define night hours.'
         else:
             message_label.value = 'Please choose different values for the 3 hours types'
 
@@ -122,11 +127,10 @@ def get_quantile_inputs_from_users():
     display(dropdown_working, slider_working)
     display(dropdown_nonworking, slider_nonworking)
     display(dropdown_weekend, slider_weekend)
+    display(widgets.HBox([dropdown_night_start, dropdown_night_end]))  # Display night start and end dropdowns side by side
 
     # You can return the widget objects if you need to access their values later
-    return (dropdown_working, slider_working, dropdown_nonworking, slider_nonworking, dropdown_weekend, slider_weekend)
-
-    
+    return (dropdown_working, slider_working, dropdown_nonworking, slider_nonworking, dropdown_weekend, slider_weekend, dropdown_night_start, dropdown_night_end)
     
     
     
