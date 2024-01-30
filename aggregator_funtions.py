@@ -180,5 +180,11 @@ def occupancy_status_profile(df_houses: pd.DataFrame(), widgets):
     #compare and convert
     df_final= df_houses.merge(df_quantile, on=['Identifier', 'hour'])
     df_final['Occupancy']= df_comp['average_occ']>= df_comp['quantile']
+    # Additional step for night hours
+    night_start, night_end = night
+    for index, row in df_final.iterrows():
+        if night_start <= row['hour'] <= night_end or (night_start > night_end and not (night_end <= row['hour'] < night_start)):
+            if row['average_occ'] > 0:
+                df_final.at[index, 'Occupancy'] = True
     print("The aggregation is done")
     return df_final
