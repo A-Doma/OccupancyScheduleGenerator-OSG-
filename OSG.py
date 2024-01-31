@@ -2,7 +2,7 @@ import aggregator_funtions as ag_f
 import ipywidgets as widgets
 from IPython.display import display, clear_output
 
-def main(path:str):
+def start(path:str):
     global wd, output_area
     files = ag_f.get_initial_input_form_user(path)
     df_total = ag_f.filter_sensor_data(files)
@@ -22,6 +22,8 @@ def main(path:str):
     # Create a button that when clicked will run the update_results function
     start_button = widgets.Button(description="Start Analysis")
     start_button.on_click(update_results)
+    start_button.style.font_weight = 'bold'
+    start_button.style.font_size = '16px'
 
     # Create an output area for the results if it doesn't exist
     output_area = widgets.Output()
