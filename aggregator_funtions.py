@@ -238,16 +238,17 @@ def occupancy_status_profile(df_houses: pd.DataFrame(), wd):
     df_final['date_time'] = df_final['date'] + pd.to_timedelta(df_final['hour'], unit='h')
     df_final = df_final.drop(['date', 'hour'], axis=1)
     df_final= df_final.sort_values(by=['Identifier','date_time'])
-    df_final= df_final.drop_duplicates()
+    df_final_leg= df_final[df_final['number_sensors']>2]
+    df_final_leg= df_final_leg.drop_duplicates()
     print("The aggregation is done")
-    df_final.to_csv("Final_profiles.csv")
-    return df_final
+    df_final_leg.to_csv("Final_profiles.csv")
+    return df_final_leg
 
 import matplotlib.pyplot as plt
-def display_results(df_final:pd.DataFrame()):
+def display_results(df_final_leg:pd.DataFrame()):
     
     # Calculate the percentage of True and False values for each hour
-    percentages = df_final.groupby(df_final['date_time'].dt.hour)['Occupancy'].value_counts(normalize=True).unstack().fillna(0)
+    percentages = df_final_leg.groupby(df_final_leg['date_time'].dt.hour)['Occupancy'].value_counts(normalize=True).unstack().fillna(0)
 
     # Plotting
     percentages[True].plot(kind='line', figsize=(3, 2))
