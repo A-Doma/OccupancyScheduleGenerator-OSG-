@@ -3,6 +3,7 @@ The goal of this Python package is to convert the 5-min motion detection data pr
 # How to get started?
 + Install directly from github using `pip install --upgrade git+https://github.com/AyaDoma/OccupancyScheduleGenerator-OSG-`
 + Make sure to install the dependencies by using `pip install ipywidgets`
++ Launch Jupyter Notebook/Lab
 + `import OSG` and run the package with `OSG.start(...)` replacing ... with the path of the DYD raw data.
 
 
