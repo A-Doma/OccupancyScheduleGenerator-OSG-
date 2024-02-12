@@ -3,7 +3,7 @@ Your package's docstring with a description of its purpose, usage, etc.
 """
 
 # Import the main entry point function or class from main.py
-import OSG
+from .OSG import start
 
 # Define your package's version
 __version__ = '0.1.0'
