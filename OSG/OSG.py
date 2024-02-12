@@ -38,7 +38,7 @@ def filter_sensor_data(filtered_files: list):
     """ Filter occupancy data.
     
     Args:
-    - files: list of all the parquet files 
+    - filtered_files: list of all the adequate parquet files 
     
     Returns:
     - df_total: dataframe for all houses with the following columns (date_time, Identifier, day, hour, sensors with Occ data)
@@ -46,7 +46,7 @@ def filter_sensor_data(filtered_files: list):
     progress_bar = widgets.IntProgress(
         value=0,
         min=0,
-        max=len(files),
+        max=len(filtered_files),
         description='Processing:',
         bar_style='',
         style={'bar_color': 'blue'},
@@ -55,7 +55,7 @@ def filter_sensor_data(filtered_files: list):
     progress_bar.style.font_size = '22px'
     display(progress_bar)
     
-    for file in files:
+    for file in filtered_files:
         file_name, ext= os.path.splitext(file)
         if ext.lower() == '.parquet':
             df= pd.read_parquet(file)
