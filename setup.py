@@ -2,12 +2,18 @@ from setuptools import setup, find_packages
 
 setup(
     name='OSG',
-    description='Occupancy Schedule Generator from DYD data',
-    version='0.1.0',
+    version='0.1',
     packages=find_packages(),
+    description='Occupancy Schedule Generator from DYD data',
+    long_description=open('README.md').read(),
+    long_description_content_type='text/markdown',
+    author='Aya Doma - IBCL',
+    author_email='aya.doma@mail.concordia.com',
+    url='https://github.com/AyaDoma/OccupancyScheduleGenerator-OSG-',
     install_requires=[
-        'pandas>=3.0.0',  # Specify the minimum version of pandas required
-        'ipywidgets>=7.0.0',  # Specify the minimum version of ipywidgets required
+        # List your package dependencies here
+        'Pandas',
+        'ipywidgets',
+        'numpy'
     ],
-    author= 'IBCL'
 )
