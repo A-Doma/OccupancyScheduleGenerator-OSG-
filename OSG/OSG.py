@@ -28,7 +28,7 @@ def get_initial_input_form_user(path: str, df_metadata:pd.DataFrame()):
         model=['ecobee4', 'ESTWVC', 'ecobee3', 'SmartSi']
         df_ilg= df_metadata[df_metadata['model'].isin(model)]
         files= list(df_ilg['identifier'])
-        filtered_files = [file for file in files if file.split('.')[0] in files_ilg]
+        filtered_files = [file for file in files if file.split('.')[0] in df_ilg]
         print(f"Total number of files= {len(files)}")
         print("The filtering process is starting now")
         return filtered_files
