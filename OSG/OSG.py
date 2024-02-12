@@ -29,13 +29,12 @@ def get_initial_input_form_user(path: str, df_metadata:pd.DataFrame()):
         df_ilg= df_metadata[df_metadata['model'].isin(model)]
         files= list(df_ilg['identifier'])
         files_path= os.listdir(path)
-        filtered_files = [file for file in files_path if file.split('.')[0] in files]
-        print(f"Total number of files= {len(filtered_files)}")
+        print(f"Total number of files= {len(files_path)}")
         print("The filtering process is starting now")
-        return filtered_files
+        return files_path, files
     
     
-def filter_sensor_data(filtered_files: list):
+def filter_sensor_data(files_path: list, files):
     """ Filter occupancy data.
     
     Args:
@@ -47,7 +46,7 @@ def filter_sensor_data(filtered_files: list):
     progress_bar = widgets.IntProgress(
         value=0,
         min=0,
-        max=len(filtered_files),
+        max=len(files_path),
         description='Processing:',
         bar_style='',
         style={'bar_color': 'blue'},
@@ -56,7 +55,7 @@ def filter_sensor_data(filtered_files: list):
     progress_bar.style.font_size = '22px'
     display(progress_bar)
     
-    for file in filtered_files:
+    for file in files_path:
         file_name, ext= os.path.splitext(file)
         if ext.lower() == '.parquet':
             df= pd.read_parquet(file)
@@ -64,22 +63,25 @@ def filter_sensor_data(filtered_files: list):
             df= pd.read_csv(file)
         df_total= pd.DataFrame()
         for house in df.Identifier.unique():
-            df_1 = df[df.Identifier == house]
-            nan_columns = df_1.isna().all()
-            active_columns = nan_columns[nan_columns == False].index.tolist()
-            occ_colu= [item for item in active_columns if 'Occ' in item]
-            occ= occ_colu.copy()
-            if not occ==[]:
-                column_extra= ["date_time", "Identifier"]
-                occ_colu.extend(column_extra)
-                df2= df_1[occ_colu]
-                df2[occ] = df2[occ].astype(float)
-                df2[occ] = df2[occ].replace({True: 1, False: 0})
-                df2['date_time'] = pd.to_datetime(df2['date_time'])
-                df2['hour'] = df2['date_time'].dt.hour
-                df2['date']= df2['date_time'].dt.date 
-                df_total= pd.concat([df_total, df2], ignore_index=True)
-        progress_bar.value += 1           
+            if house in files:
+                df_1 = df[df.Identifier == house]
+                nan_columns = df_1.isna().all()
+                active_columns = nan_columns[nan_columns == False].index.tolist()
+                occ_colu= [item for item in active_columns if 'Occ' in item]
+                occ= occ_colu.copy()
+                if not occ==[]:
+                    column_extra= ["date_time", "Identifier"]
+                    occ_colu.extend(column_extra)
+                    df2= df_1[occ_colu]
+                    df2[occ] = df2[occ].astype(float)
+                    df2[occ] = df2[occ].replace({True: 1, False: 0})
+                    df2['date_time'] = pd.to_datetime(df2['date_time'])
+                    df2['hour'] = df2['date_time'].dt.hour
+                    df2['date']= df2['date_time'].dt.date 
+                    df_total= pd.concat([df_total, df2], ignore_index=True)
+            else:
+                continue
+        progress_bar.value += 1          
     print("Occupancy Data is filtered and now the aggregation process will start")
     return df_total
         
@@ -277,8 +279,8 @@ def start(path:str, df_metadata:pd.DataFrame()):
     
     """
     global wd, output_area
-    files = get_initial_input_form_user(path, df_metadata)
-    df_total = filter_sensor_data(files)
+    files,filter = get_initial_input_form_user(path, df_metadata)
+    df_total = filter_sensor_data(files,filter)
     df_houses = occupancy_hourly_average(df_total)
     wd = get_quantile_inputs_from_users()
     
