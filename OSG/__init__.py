@@ -3,7 +3,6 @@ Your package's docstring with a description of its purpose, usage, etc.
 """
 
 # Import the main entry point function or class from main.py
-import aggregator_funtions as ag_f
 import ipywidgets as widgets
 from IPython.display import display, clear_output
 from .OSG import start
