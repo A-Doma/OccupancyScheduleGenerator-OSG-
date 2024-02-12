@@ -276,7 +276,7 @@ def start(path:str, df_metadata:pd.DataFrame()):
     
     """
     global wd, output_area
-    files = get_initial_input_form_user(path)
+    files = get_initial_input_form_user(path, df_metadata)
     df_total = filter_sensor_data(files)
     df_houses = occupancy_hourly_average(df_total)
     wd = get_quantile_inputs_from_users()
