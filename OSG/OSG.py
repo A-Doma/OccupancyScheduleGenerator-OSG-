@@ -263,7 +263,18 @@ def display_results(df_final_leg:pd.DataFrame()):
 import ipywidgets as widgets
 from IPython.display import display, clear_output
 
-def start(path:str):
+def start(path:str, df_metadata:pd.DataFrame()):
+    """ Gets the path to the raw data and the metadtafile for removing inadequt houses
+    
+    Args:
+    - path: the path to the raw data
+    - df_metadata: The metadata descripting the household characteristics.
+    if not valid the code will break and report an error
+    
+    Returns:
+    - df_final: dataframe with the generated profiles.
+    
+    """
     global wd, output_area
     files = get_initial_input_form_user(path)
     df_total = filter_sensor_data(files)
