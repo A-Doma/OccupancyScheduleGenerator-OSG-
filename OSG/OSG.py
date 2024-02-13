@@ -242,9 +242,12 @@ def occupancy_status_profile(df_houses: pd.DataFrame(), wd):
     df_final = df_final.drop(['date', 'hour'], axis=1)
     df_final= df_final.sort_values(by=['Identifier','date_time'])
     df_final_leg= df_final[df_final['number_sensors']>2]
+    columns_order = ['date_time', 'Identifier'] + [col for col in df_final_leg.columns if col not in ['date_time', 'Identifier']]
+    data_reordered = df_final_leg[columns_order]
+    data_reordered.set_index('date_time', inplace=True)
     print("The aggregation is done")
-    df_final_leg.to_csv("Final_profiles.csv")
-    return df_final_leg
+    data_reordered.to_csv("Final_profiles.csv")
+    return data_reordered
 
 import matplotlib.pyplot as plt
 def display_results(df_final_leg:pd.DataFrame()):
