@@ -242,7 +242,6 @@ def occupancy_status_profile(df_houses: pd.DataFrame(), wd):
     df_final = df_final.drop(['date', 'hour'], axis=1)
     df_final= df_final.sort_values(by=['Identifier','date_time'])
     df_final_leg= df_final[df_final['number_sensors']>2]
-    df_final_leg= df_final_leg.drop_duplicates()
     print("The aggregation is done")
     df_final_leg.to_csv("Final_profiles.csv")
     return df_final_leg
