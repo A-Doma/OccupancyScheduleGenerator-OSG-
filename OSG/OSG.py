@@ -245,8 +245,11 @@ def occupancy_status_profile(df_houses: pd.DataFrame(), wd):
     columns_order = ['date_time', 'Identifier'] + [col for col in df_final_leg.columns if col not in ['date_time', 'Identifier']]
     data_reordered = df_final_leg[columns_order]
     data_reordered.reset_index(inplace=True)
+    data_reordered= data_reordered.drop(['index', 'weekday', 'type','average_occ'], axis=1)
+    data_reordered= data_reordered.drop_duplicates()
     print("The aggregation is done")
     data_reordered.to_csv("Final_profiles.csv")
+    
     return data_reordered
 
 import matplotlib.pyplot as plt
