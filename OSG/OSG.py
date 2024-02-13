@@ -118,24 +118,24 @@ def get_quantile_inputs_from_users():
     message_label = widgets.Label('Please choose different values for the 3 hours types')
 
     # Existing widgets for working, nonworking, and weekend hours
-    dropdown_working = widgets.Dropdown(options=['working hours', 'nonworking hours', 'weekends hours'], description='Metric 1:')
+    dropdown_working = widgets.Dropdown(options=['working hours', 'nonworking hours', 'weekends hours'], description='Quantile (%):')
     slider_working = widgets.IntSlider(value=10, min=0, max=100, step=5, description='Value 1:')
     slider_working.style.font_weight = 'bold'
     slider_working.style.font_size = '22px'
     
-    dropdown_nonworking = widgets.Dropdown(options=['working hours', 'nonworking hours', 'weekends hours'], description='Metric 2:')
+    dropdown_nonworking = widgets.Dropdown(options=['nonworking hours','working hours', 'weekends hours'], description='Quantile (%):')
     slider_nonworking = widgets.IntSlider(value=10, min=0, max=100, step=5, description='Value 2:')
     slider_nonworking.style.font_weight = 'bold'
     slider_nonworking.style.font_size = '22px'
     
-    dropdown_weekend = widgets.Dropdown(options=['working hours', 'nonworking hours', 'weekends hours'], description='Metric 3:')
+    dropdown_weekend = widgets.Dropdown(options=['weekends hours','working hours', 'nonworking hours'], description='Quantile (%)')
     slider_weekend = widgets.IntSlider(value=10, min=0, max=100, step=5, description='Value 3:')
     slider_weekend.style.font_weight = 'bold'
     slider_weekend.style.font_size = '22px'
     
     # New widgets for night definition
-    dropdown_night_start = widgets.Dropdown(options=list(range(24)), description='Night Start:')
-    dropdown_night_end = widgets.Dropdown(options=list(range(24)), description='Night End:')
+    dropdown_night_start = widgets.Dropdown(options=list(range(24)), description='Night Start (hour):')
+    dropdown_night_end = widgets.Dropdown(options=list(range(24)), description='Night End (hour):')
     dropdown_night_start.style.font_weight = 'bold'
     dropdown_night_start.style.font_size = '22px'
     dropdown_night_end.style.font_weight = 'bold'
@@ -260,7 +260,7 @@ def display_results(df_final_leg:pd.DataFrame()):
 
     plt.xticks(rotation=0)
     plt.show()
-    print(f"number of houses= {len(df_final.Identifier.unique())} houses")
+    print(f"number of houses= {len(df_final_leg.Identifier.unique())} houses")
     print(f"Occupied hours= {round(percentages[True].mean()*100,0)}%")
 
 import ipywidgets as widgets
