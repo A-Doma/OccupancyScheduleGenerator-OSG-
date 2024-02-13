@@ -134,8 +134,8 @@ def get_quantile_inputs_from_users():
     slider_weekend.style.font_size = '22px'
     
     # New widgets for night definition
-    dropdown_night_start = widgets.Dropdown(options=list(range(24)), description='Night Start (hour):')
-    dropdown_night_end = widgets.Dropdown(options=list(range(24)), description='Night End (hour):')
+    dropdown_night_start = widgets.Dropdown(options=list(range(24)), description='Night Start:')
+    dropdown_night_end = widgets.Dropdown(options=list(range(24)), description='Night End:')
     dropdown_night_start.style.font_weight = 'bold'
     dropdown_night_start.style.font_size = '22px'
     dropdown_night_end.style.font_weight = 'bold'
