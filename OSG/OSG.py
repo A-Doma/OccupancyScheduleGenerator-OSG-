@@ -119,17 +119,17 @@ def get_quantile_inputs_from_users():
 
     # Existing widgets for working, nonworking, and weekend hours
     dropdown_working = widgets.Dropdown(options=['working hours', 'nonworking hours', 'weekends hours'], description='Metric (1)')
-    slider_working = widgets.IntSlider(value=10, min=0, max=100, step=5, description='Quantile (%)')
+    slider_working = widgets.IntSlider(value=10, min=0, max=100, step=5, description='Percentile (%)')
     slider_working.style.font_weight = 'bold'
     slider_working.style.font_size = '22px'
     
     dropdown_nonworking = widgets.Dropdown(options=['nonworking hours','working hours', 'weekends hours'], description='Metric (2):')
-    slider_nonworking = widgets.IntSlider(value=10, min=0, max=100, step=5, description='Quantile (%)')
+    slider_nonworking = widgets.IntSlider(value=10, min=0, max=100, step=5, description='Percentile (%)')
     slider_nonworking.style.font_weight = 'bold'
     slider_nonworking.style.font_size = '22px'
     
     dropdown_weekend = widgets.Dropdown(options=['weekends hours','working hours', 'nonworking hours'], description='Metric (3)')
-    slider_weekend = widgets.IntSlider(value=10, min=0, max=100, step=5, description='Quantile (%)')
+    slider_weekend = widgets.IntSlider(value=10, min=0, max=100, step=5, description='Percentile (%)')
     slider_weekend.style.font_weight = 'bold'
     slider_weekend.style.font_size = '22px'
     
