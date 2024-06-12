@@ -272,17 +272,17 @@ import matplotlib.pyplot as plt
 def display_results(df_final_leg:pd.DataFrame()):
     
     # Calculate the percentage of True and False values for each hour
-    percentages = df_final_leg.groupby(df_final_leg['date_time'].dt.hour)['Occupancy'].value_counts(normalize=True).unstack().fillna(0)
+    percentages = df_final_leg.groupby(df_final_leg['date_time'].dt.hour)['Occupancy'].mean()
 
-    # Plotting
-    percentages[True].plot(kind='line', figsize=(3, 2))
+    # Plotting the percentage of occupied (1) values
+    percentages.plot(kind='line', figsize=(10, 6))
     plt.xlabel('Hour of the Day')
     plt.ylabel('Aggregated Occupied Probability')
 
     plt.xticks(rotation=0)
     plt.show()
-    print(f"number of houses= {len(df_final_leg.Identifier.unique())} houses")
-    print(f"Occupied hours= {round(percentages[True].mean()*100,0)}%")
+    print(f"Number of houses: {len(df_final_leg.Identifier.unique())} houses")
+    print(f"Occupied hours: {round(percentages.mean() * 100, 0)}%")
 
 import ipywidgets as widgets
 from IPython.display import display, clear_output
