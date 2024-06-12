@@ -286,7 +286,6 @@ def save_csv(button, df_final_leg):
     save_path = os.path.join(folder_path, "Final_profiles.csv")
     # Save the DataFrame to the specified path
     df_final_leg.to_csv(save_path, index=False)
-    print(f"Data saved to {save_path}")
 
 import ipywidgets as widgets
 from IPython.display import display, clear_output
@@ -321,6 +320,7 @@ def start(path:str, df_metadata:pd.DataFrame()):
             save_button = widgets.Button(description="Save CSV", button_style='success')
             save_button.on_click(save_csv(save_button, df_final))
             display(save_button)
+            print(f"Data saved to {save_path}")
     # Create a button that when clicked will run the update_results function
     start_button = widgets.Button(description="Start Analysis")
     start_button.on_click(update_results)
@@ -336,4 +336,6 @@ def start(path:str, df_metadata:pd.DataFrame()):
     display(dropdown_weekend, slider_weekend)
     display(widgets.HBox([dropdown_night_start, dropdown_night_end]))
     display(start_button, output_area)
+    display(save_button)
+    print(f"Data saved to {save_path}")
 
