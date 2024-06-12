@@ -274,13 +274,16 @@ def display_results(df_final_leg:pd.DataFrame()):
     plt.show()
     print(f"Number of houses: {len(df_final_leg.Identifier.unique())} houses")
     print(f"Occupied hours: {round(percentages.mean() * 100, 0)}%")
-def save_csv(button, df_final_leg):
+def save_csv(df_final_leg):
     # Get the path to the main user environment (home directory)
     user_home_path = os.path.expanduser("~")
     # Create the "Occupancy_OSG" folder
     folder_path = os.path.join(user_home_path, "Occupancy_OSG")
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
+    save_button = widgets.Button(description="Save CSV", button_style='success')
+    save_button.on_click(save_csv(df_final))
+    return save_button
     
     # Define the save path for the CSV file
     save_path = os.path.join(folder_path, "Final_profiles.csv")
@@ -317,8 +320,7 @@ def start(path:str, df_metadata:pd.DataFrame()):
             clear_output(wait=True)
             df_final = occupancy_status_profile(df_houses, wd)
             display_results(df_final)
-            save_button = widgets.Button(description="Save CSV", button_style='success')
-            save_button.on_click(save_csv(save_button, df_final))
+            save_button = save_csv(df_final)
             display(save_button)
             print(f"Data saved to {save_path}")
     # Create a button that when clicked will run the update_results function
