@@ -256,15 +256,6 @@ def occupancy_status_profile(df_houses: pd.DataFrame(), wd):
     data_reordered= data_reordered.drop_duplicates()
     data_reordered['Occupancy'] = data_reordered['Occupancy'].astype(int)
     print("The aggregation is done")
-    def save_csv(button):
-        desktop_path = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
-        save_path = os.path.join(desktop_path, "Final_profiles.csv")
-        data_reordered.to_csv(save_path, index=False)
-        print(f"Data saved to {save_path}")
-
-    save_button = widgets.Button(description="Save CSV", button_style='success')
-    save_button.on_click(save_csv)
-    display(save_button)
     
     return data_reordered
 
@@ -283,6 +274,11 @@ def display_results(df_final_leg:pd.DataFrame()):
     plt.show()
     print(f"Number of houses: {len(df_final_leg.Identifier.unique())} houses")
     print(f"Occupied hours: {round(percentages.mean() * 100, 0)}%")
+def save_csv(button):
+    desktop_path = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
+    save_path = os.path.join(desktop_path, "Final_profiles.csv")
+    data_reordered.to_csv(save_path, index=False)
+    print(f"Data saved to {save_path}")
 
 import ipywidgets as widgets
 from IPython.display import display, clear_output
@@ -330,3 +326,6 @@ def start(path:str, df_metadata:pd.DataFrame()):
     display(dropdown_weekend, slider_weekend)
     display(widgets.HBox([dropdown_night_start, dropdown_night_end]))
     display(start_button, output_area)
+    save_button = widgets.Button(description="Save CSV", button_style='success')
+    save_button.on_click(save_csv)
+    display(save_button)
