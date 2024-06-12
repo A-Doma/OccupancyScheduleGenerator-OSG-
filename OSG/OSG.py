@@ -310,7 +310,9 @@ def start(path:str, df_metadata:pd.DataFrame()):
             clear_output(wait=True)
             df_final = occupancy_status_profile(df_houses, wd)
             display_results(df_final)
-
+            save_button = widgets.Button(description="Save CSV", button_style='success')
+            save_button.on_click(save_csv)
+            display(save_button)
     # Create a button that when clicked will run the update_results function
     start_button = widgets.Button(description="Start Analysis")
     start_button.on_click(update_results)
@@ -326,6 +328,4 @@ def start(path:str, df_metadata:pd.DataFrame()):
     display(dropdown_weekend, slider_weekend)
     display(widgets.HBox([dropdown_night_start, dropdown_night_end]))
     display(start_button, output_area)
-    save_button = widgets.Button(description="Save CSV", button_style='success')
-    save_button.on_click(save_csv)
-    display(save_button)
+
