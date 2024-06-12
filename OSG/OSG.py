@@ -28,6 +28,9 @@ def get_initial_input_form_user(path: str, df_metadata:pd.DataFrame()):
         model=['ecobee4', 'ESTWVC', 'ecobee3', 'SmartSi']
         df_ilg= df_metadata[df_metadata['model'].isin(model)]
         files= list(df_ilg['identifier'])
+        if not files:
+            print("No illegible houses")
+            return None
         files_path= os.listdir(path)
         print(f"Total number of files= {len(files_path)}")
         print("The filtering process is starting now")
@@ -81,8 +84,12 @@ def filter_sensor_data(files_path: list, files):
                     df_total= pd.concat([df_total, df2], ignore_index=True)
             else:
                 continue
-        progress_bar.value += 1          
-    print("Occupancy Data is filtered and now the aggregation process will start")
+        progress_bar.value += 1     
+    if df_total.empty:
+        print("No Occupancy data in the files")
+        return None
+    else:
+        print("Occupancy Data is filtered and now the aggregation process will start")
     return df_total
         
 def occupancy_hourly_average(df_total: pd.DataFrame()):
@@ -247,8 +254,17 @@ def occupancy_status_profile(df_houses: pd.DataFrame(), wd):
     data_reordered.reset_index(inplace=True)
     data_reordered= data_reordered.drop(['index', 'weekday', 'type','average_occ'], axis=1)
     data_reordered= data_reordered.drop_duplicates()
+    data_reordered['Occupancy'] = data_reordered['Occupancy'].astype(int)
     print("The aggregation is done")
-    data_reordered.to_csv("Final_profiles.csv")
+    def save_csv(button):
+        desktop_path = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
+        save_path = os.path.join(desktop_path, "Final_profiles.csv")
+        data_reordered.to_csv(save_path, index=False)
+        print(f"Data saved to {save_path}")
+
+    save_button = widgets.Button(description="Save CSV", button_style='success')
+    save_button.on_click(save_csv)
+    display(save_button)
     
     return data_reordered
 
