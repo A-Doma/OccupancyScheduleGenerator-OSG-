@@ -274,10 +274,10 @@ def display_results(df_final_leg:pd.DataFrame()):
     plt.show()
     print(f"Number of houses: {len(df_final_leg.Identifier.unique())} houses")
     print(f"Occupied hours: {round(percentages.mean() * 100, 0)}%")
-def save_csv(button, data_reordered):
+def save_csv(button, df_final_leg):
     desktop_path = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
     save_path = os.path.join(desktop_path, "Final_profiles.csv")
-    data_reordered.to_csv(save_path, index=False)
+    df_final_leg.to_csv(save_path, index=False)
     print(f"Data saved to {save_path}")
 
 import ipywidgets as widgets
@@ -311,7 +311,7 @@ def start(path:str, df_metadata:pd.DataFrame()):
             df_final = occupancy_status_profile(df_houses, wd)
             display_results(df_final)
             save_button = widgets.Button(description="Save CSV", button_style='success')
-            save_button.on_click(save_csv(data_reordered))
+            save_button.on_click(save_csv(df_final))
             display(save_button)
     # Create a button that when clicked will run the update_results function
     start_button = widgets.Button(description="Start Analysis")
