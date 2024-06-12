@@ -311,7 +311,7 @@ def start(path:str, df_metadata:pd.DataFrame()):
             df_final = occupancy_status_profile(df_houses, wd)
             display_results(df_final)
             save_button = widgets.Button(description="Save CSV", button_style='success')
-            save_button.on_click(save_csv(df_final))
+            save_button.on_click(save_csv(save_button, df_final))
             display(save_button)
     # Create a button that when clicked will run the update_results function
     start_button = widgets.Button(description="Start Analysis")
