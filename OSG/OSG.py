@@ -275,8 +275,16 @@ def display_results(df_final_leg:pd.DataFrame()):
     print(f"Number of houses: {len(df_final_leg.Identifier.unique())} houses")
     print(f"Occupied hours: {round(percentages.mean() * 100, 0)}%")
 def save_csv(button, df_final_leg):
-    desktop_path = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
-    save_path = os.path.join(desktop_path, "Final_profiles.csv")
+    # Get the path to the main user environment (home directory)
+    user_home_path = os.path.expanduser("~")
+    # Create the "Occupancy_OSG" folder
+    folder_path = os.path.join(user_home_path, "Occupancy_OSG")
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+    
+    # Define the save path for the CSV file
+    save_path = os.path.join(folder_path, "Final_profiles.csv")
+    # Save the DataFrame to the specified path
     df_final_leg.to_csv(save_path, index=False)
     print(f"Data saved to {save_path}")
 
