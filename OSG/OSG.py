@@ -177,8 +177,7 @@ def occupancy_status_profile(df_houses: pd.DataFrame, wd):
     # Calculate the metrics
     df_houses['date'] = pd.to_datetime(df_houses['date'])
     df_houses['weekday'] = df_houses['date'].dt.weekday
-    df_houses['day_type'] = df_houses['date'].apply(lambda x: 'weekend' if x >= 5 else 'weekday')
-    
+    df_houses['day_type'] = df_houses['weekday'].apply(lambda x: 'weekend' if x >= 5 else 'weekday')
     quantile_data = []
     progress_bar = widgets.IntProgress(
         value=0,
