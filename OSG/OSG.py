@@ -220,11 +220,13 @@ def occupancy_status_profile(df_houses: pd.DataFrame, wd):
     
     # Additional step for night hours
     night_start, night_end = night
-    for date, group in df_final.groupby('date'):
-        if any((night_start <= row['hour'] <= night_end or (night_start > night_end and not (night_end <= row['hour'] < night_start))) and row['average_occ'] > 0 for _, row in group.iterrows()):
-            for index, row in group.iterrows():
-                if night_start <= row['hour'] <= night_end or (night_start > night_end and not (night_end <= row['hour'] < night_start)):
-                    df_final.at[index, 'Occupancy'] = 1
+    if night_start < night_end:
+        night_mask = (df_final['hour'] >= night_start) & (df_final['hour'] <= night_end)
+    else:
+        night_mask = (df_final['hour'] >= night_start) | (df_final['hour'] <= night_end)
+    
+    night_occupied_mask = df_final.groupby('date')['average_occ'].transform(lambda x: (x > 0).any())
+    df_final.loc[night_mask & night_occupied_mask, 'Occupancy'] = 1
 
     df_final['date_time'] = df_final['date'] + pd.to_timedelta(df_final['hour'], unit='h')
     df_final = df_final.drop(['date', 'hour'], axis=1)
