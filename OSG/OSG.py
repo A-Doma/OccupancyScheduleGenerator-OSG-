@@ -22,16 +22,15 @@ def get_initial_input_form_user(path: str, df_metadata: pd.DataFrame):
     
     if not is_valid_path(path):
         print(f"'{path}' is not a valid file or directory path.")
-        return None
+        return None, None
     else:
-        os.chdir(path)
         model = ['ecobee4', 'ESTWVC', 'ecobee3', 'SmartSi']
         df_ilg = df_metadata[df_metadata['model'].isin(model)]
         files = list(df_ilg['identifier'])
         if not files:
             print("No illegible houses")
-            return None
-        files_path = os.listdir(path)
+            return None, None
+        files_path = [os.path.join(path, file) for file in os.listdir(path)]
         print(f"Total number of files= {len(files_path)}")
         print("The filtering process is starting now")
         return files_path, files
@@ -40,7 +39,8 @@ def filter_sensor_data(files_path: list, files):
     """ Filter occupancy data.
     
     Args:
-    - filtered_files: list of all the adequate parquet files 
+    - files_path: list of all the raw data files with full paths
+    - files: list of house identifiers to filter
     
     Returns:
     - df_total: dataframe for all houses with the following columns (date_time, Identifier, day, hour, sensors with Occ data)
@@ -57,7 +57,7 @@ def filter_sensor_data(files_path: list, files):
     progress_bar.style.font_size = '22px'
     display(progress_bar)
     
-    df_total = pd.DataFrame()
+    all_data = []
     for file in files_path:
         file_name, ext = os.path.splitext(file)
         if ext.lower() == '.parquet':
@@ -68,28 +68,23 @@ def filter_sensor_data(files_path: list, files):
         for house in df.Identifier.unique():
             if house in files:
                 df_1 = df[df.Identifier == house]
-                nan_columns = df_1.isna().all()
-                active_columns = nan_columns[nan_columns == False].index.tolist()
-                occ_colu = [item for item in active_columns if 'Occ' in item]
-                occ = occ_colu.copy()
-                if not occ == []:
-                    column_extra = ["date_time", "Identifier"]
-                    occ_colu.extend(column_extra)
-                    df2 = df_1[occ_colu]
-                    df2[occ] = df2[occ].astype(float)
-                    df2[occ] = df2[occ].replace({True: 1, False: 0})
-                    df2['date_time'] = pd.to_datetime(df2['date_time'])
-                    df2['hour'] = df2['date_time'].dt.hour
-                    df2['date'] = df2['date_time'].dt.date 
-                    df_total = pd.concat([df_total, df2], ignore_index=True)
-            else:
-                continue
+                active_columns = df_1.columns[df_1.notna().any()].tolist()
+                occ_columns = [col for col in active_columns if 'Occ' in col]
+                if occ_columns:
+                    df_1 = df_1[['date_time', 'Identifier'] + occ_columns]
+                    df_1[occ_columns] = df_1[occ_columns].astype(float).replace({True: 1, False: 0})
+                    df_1['date_time'] = pd.to_datetime(df_1['date_time'])
+                    df_1['hour'] = df_1['date_time'].dt.hour
+                    df_1['date'] = df_1['date_time'].dt.date 
+                    all_data.append(df_1)
         progress_bar.value += 1
-    if df_total.empty:
+    
+    if not all_data:
         print("No Occupancy data in the files")
         return None
-    else:
-        print("Occupancy Data is filtered and now the aggregation process will start")
+    
+    df_total = pd.concat(all_data, ignore_index=True)
+    print("Occupancy Data is filtered and now the aggregation process will start")
     return df_total
         
 def occupancy_hourly_average(df_total: pd.DataFrame):
@@ -101,21 +96,14 @@ def occupancy_hourly_average(df_total: pd.DataFrame):
     Returns:
     - df_houses: dataframe for all houses with the following columns (date, hour, average_occ, Identifier, number_sensors)
     """
-    df_house = df_total.groupby(['Identifier', 'date', 'hour']).mean()
-    houses = [value[0] for value in df_house.index]
-    houses_unqiue = list(set(houses))
-    df_houses = pd.DataFrame()
-    for house in houses_unqiue:
-        df1 = df_house.loc[house, :]
-        df_1 = df1.dropna(how='all', axis=1)
-        df2 = pd.DataFrame(df_1.mean(axis=1))
-        df2['Identifier'] = [house] * len(df2[0])
-        df2['number_sensors'] = [len(df_1.columns)] * len(df2[0])
-        df2['average_occ'] = df2[0]
-        df2 = df2.drop([0], axis=1)
-        df_houses = pd.concat([df_houses, df2])
-    df_houses = df_houses.reset_index()
-
+    df_total['number_sensors'] = df_total.filter(like='Occ').notna().sum(axis=1)
+    df_total['average_occ'] = df_total.filter(like='Occ').mean(axis=1)
+    
+    df_houses = df_total.groupby(['Identifier', 'date', 'hour']).agg({
+        'average_occ': 'mean',
+        'number_sensors': 'max'
+    }).reset_index()
+    
     print("First level of Aggregation is done")
     return df_houses
 
@@ -189,10 +177,9 @@ def occupancy_status_profile(df_houses: pd.DataFrame, wd):
     # Calculate the metrics
     df_houses['date'] = pd.to_datetime(df_houses['date'])
     df_houses['weekday'] = df_houses['date'].dt.weekday
-    df_houses['day_type'] = df_houses['date'].apply(lambda x: 'weekend' if x.weekday() >= 5 else 'weekday')
-    df_quantile = pd.DataFrame()
-    quantile_data = []
+    df_houses['day_type'] = df_houses['date'].apply(lambda x: 'weekend' if x >= 5 else 'weekday')
     
+    quantile_data = []
     progress_bar = widgets.IntProgress(
         value=0,
         min=0,
@@ -224,13 +211,13 @@ def occupancy_status_profile(df_houses: pd.DataFrame, wd):
             weekend_data = df_h[(df_h['hour'] == hour) & (df_h['weekday'] >= 5)]
             quantile = weekend_data['average_occ'].quantile(metric_weekend)
             quantile_data.append({'Identifier': house, 'hour': hour, 'day_type': 'weekend', 'quantile': quantile, 'type': 'weekend_hours'})
-        dz = pd.DataFrame(quantile_data)
-        df_quantile = pd.concat([df_quantile, dz], ignore_index=True)
         progress_bar.value += 1
+    
+    df_quantile = pd.DataFrame(quantile_data)
     
     # Compare and convert
     df_final = df_houses.merge(df_quantile, on=['Identifier', 'hour', 'day_type'])
-    df_final['Occupancy'] = df_final['average_occ'] >= df_final['quantile']
+    df_final['Occupancy'] = (df_final['average_occ'] >= df_final['quantile']).astype(int)
     
     # Additional step for night hours
     night_start, night_end = night
@@ -238,7 +225,7 @@ def occupancy_status_profile(df_houses: pd.DataFrame, wd):
         if any((night_start <= row['hour'] <= night_end or (night_start > night_end and not (night_end <= row['hour'] < night_start))) and row['average_occ'] > 0 for _, row in group.iterrows()):
             for index, row in group.iterrows():
                 if night_start <= row['hour'] <= night_end or (night_start > night_end and not (night_end <= row['hour'] < night_start)):
-                    df_final.at[index, 'Occupancy'] = True
+                    df_final.at[index, 'Occupancy'] = 1
 
     df_final['date_time'] = df_final['date'] + pd.to_timedelta(df_final['hour'], unit='h')
     df_final = df_final.drop(['date', 'hour'], axis=1)
@@ -249,7 +236,7 @@ def occupancy_status_profile(df_houses: pd.DataFrame, wd):
     data_reordered.reset_index(inplace=True)
     data_reordered = data_reordered.drop(['index', 'weekday', 'type', 'average_occ'], axis=1)
     data_reordered = data_reordered.drop_duplicates()
-    data_reordered['Occupancy'] = data_reordered['Occupancy'].astype(int)
+    
     print("The aggregation is done")
     
     return data_reordered
@@ -257,7 +244,6 @@ def occupancy_status_profile(df_houses: pd.DataFrame, wd):
 import matplotlib.pyplot as plt
 
 def display_results(df_final_leg: pd.DataFrame):
-    
     # Calculate the percentage of 1s (occupied) for each hour
     percentages = df_final_leg.groupby(df_final_leg['date_time'].dt.hour)['Occupancy'].mean()
 
@@ -288,11 +274,11 @@ def save_csv(df_final_leg):
     print(f"Data saved to {save_path}")
 
 def start(path: str, df_metadata: pd.DataFrame):
-    """ Gets the path to the raw data and the metadtafile for removing inadequt houses
+    """ Gets the path to the raw data and the metadata file for removing inadequate houses
     
     Args:
     - path: the path to the raw data
-    - df_metadata: The metadata descripting the household characteristics.
+    - df_metadata: The metadata describing the household characteristics.
     if not valid the code will break and report an error
     
     Returns:
@@ -301,7 +287,11 @@ def start(path: str, df_metadata: pd.DataFrame):
     """
     global wd, output_area
     files, filter_files = get_initial_input_form_user(path, df_metadata)
+    if files is None:
+        return
     df_total = filter_sensor_data(files, filter_files)
+    if df_total is None:
+        return
     df_houses = occupancy_hourly_average(df_total)
     wd = get_quantile_inputs_from_users()
     
