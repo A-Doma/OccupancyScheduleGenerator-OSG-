@@ -177,10 +177,14 @@ def occupancy_status_profile(folder_path, wd):
 
             df_houses['Occupancy'] = (df_houses['average_occ'] >= df_houses.groupby(['Identifier', 'hour', 'day_type'])['average_occ'].transform(lambda x: x.quantile(metric_working if 'working' in x.name else metric_nonworking if 'nonworking' in x.name else metric_weekend))).astype('int8')
 
+            # ✅ Ensure `date_time` exists
+            df_houses['date_time'] = df_houses['date'] + pd.to_timedelta(df_houses['hour'], unit='h')
+
             df_houses.to_parquet(file_path, index=False, engine="pyarrow", compression="snappy")
 
     print("Occupancy transformation completed.")
     return folder_path  
+ 
 
 # =========================== STEP 5: Display Results ============================
 def display_results(folder_path):
@@ -214,8 +218,13 @@ def display_results(folder_path):
     print(f"Average occupied hours: {round(aggregated_percentages.mean() * 100, 2)}%")
 
 # =========================== FINAL EXECUTION FLOW ==============================
+def update_results(wd, folder_path):
+    """Recompute occupancy status and update results dynamically."""
+    folder = occupancy_status_profile(folder_path, wd)
+    display_results(folder)
+
 def start(path: str, df_metadata: pd.DataFrame):
-    """Pipeline execution to filter, process, and analyze occupancy data.
+    """Pipeline execution to filter, process, and analyze occupancy data interactively.
     
     Args:
     - path: The path to the raw data.
@@ -224,7 +233,7 @@ def start(path: str, df_metadata: pd.DataFrame):
     Returns:
     - Final folder path containing processed occupancy data.
     """
-
+    
     files, filter_files = get_initial_input_from_user(path, df_metadata)
     if files is None:
         return
@@ -232,11 +241,18 @@ def start(path: str, df_metadata: pd.DataFrame):
     folder = filter_sensor_data(files, filter_files)
     folder = occupancy_hourly_average(folder)
 
-    # **Fix: Collect user-defined occupancy thresholds before proceeding**
-    wd = get_quantile_inputs_from_users()  # Collect user inputs
+    # Collect user inputs
+    wd = get_quantile_inputs_from_users()
 
-    folder = occupancy_status_profile(folder, wd)
-    display_results(folder)
+    # **Dynamic Update: Automatically update results when user changes values**
+    def on_change(change):
+        update_results(wd, folder)
+
+    wd[1].observe(on_change, names='value')  # Working Hours Slider
+    wd[3].observe(on_change, names='value')  # Nonworking Hours Slider
+    wd[5].observe(on_change, names='value')  # Weekend Hours Slider
+
+    update_results(wd, folder)  # Initial results
 
     return folder
 
