@@ -7,8 +7,38 @@ warnings.filterwarnings('ignore')
 import ipywidgets as widgets
 from IPython.display import display, clear_output
 
+# ========================== STEP 1: Get Initial Inputs ==========================
+def get_initial_input_from_user(path: str, df_metadata: pd.DataFrame):
+    """Gets the path to the raw data from users and generates a list of the files.
+    
+    Args:
+    - path: The path to the raw data.
+    - df_metadata: The metadata describing household characteristics.
 
-# ========================== STEP 1: Filter Sensor Data ==========================
+    Returns:
+    - filtered_files: List of all raw data files with thermostats including built-in motion sensors.
+    """
+    if not os.path.exists(path):
+        print(f"'{path}' is not a valid directory path.")
+        return None, None
+
+    # Filter only the models with built-in motion sensors
+    model = ['ecobee4', 'ESTWVC', 'ecobee3', 'SmartSi']
+    df_ilg = df_metadata[df_metadata['model'].isin(model)]
+    files = list(df_ilg['identifier'])
+    
+    if not files:
+        print("No eligible houses found.")
+        return None, None
+
+    # List all files in the directory
+    files_path = [os.path.join(path, file) for file in os.listdir(path)]
+    print(f"Total number of files: {len(files_path)}")
+    print("The filtering process is starting now.")
+    
+    return files_path, files
+
+# ========================== STEP 2: Filter Sensor Data ==========================
 def filter_sensor_data(files_path: list, files, output_folder="Filtered_Houses"):
     """Filter occupancy data and save each house separately in a new folder.
     
@@ -20,7 +50,6 @@ def filter_sensor_data(files_path: list, files, output_folder="Filtered_Houses")
     Returns:
     - output_folder: Path to the new folder containing filtered data.
     """
-    
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
@@ -52,7 +81,7 @@ def filter_sensor_data(files_path: list, files, output_folder="Filtered_Houses")
     print(f"Filtering completed. All houses saved to {output_folder}.")
     return output_folder  
 
-# ====================== STEP 2: Compute Hourly Averages =========================
+# ====================== STEP 3: Compute Hourly Averages =========================
 def occupancy_hourly_average(folder_path):
     """Compute hourly occupancy averages for each house separately.
     
@@ -85,7 +114,7 @@ def occupancy_hourly_average(folder_path):
     print("Hourly aggregation completed.")
     return folder_path  
 
-# ======================= STEP 3: Compute Occupancy Status ========================
+# ======================= STEP 4: Compute Occupancy Status ========================
 def occupancy_status_profile(folder_path, wd):
     """Convert the average occupancy to binary (0 or 1) for each house separately.
     
@@ -96,7 +125,6 @@ def occupancy_status_profile(folder_path, wd):
     Returns:
     - folder_path: Path to the folder containing the final processed files.
     """
-
     print("Applying occupancy status transformation...")
 
     for file in os.listdir(folder_path):
@@ -119,14 +147,9 @@ def occupancy_status_profile(folder_path, wd):
     print("Occupancy transformation completed.")
     return folder_path  
 
-# =========================== STEP 4: Display Results ============================
+# =========================== STEP 5: Display Results ============================
 def display_results(folder_path):
-    """Display aggregated occupancy probability from processed Parquet files.
-    
-    Args:
-    - folder_path: Path to the folder containing final processed Parquet files.
-    """
-
+    """Display aggregated occupancy probability from processed Parquet files."""
     print("Generating results visualization...")
 
     percentages = []
@@ -157,23 +180,12 @@ def display_results(folder_path):
 
 # =========================== FINAL EXECUTION FLOW ==============================
 def start(path: str, df_metadata: pd.DataFrame):
-    """Pipeline execution to filter, process, and analyze occupancy data.
-    
-    Args:
-    - path: The path to the raw data.
-    - df_metadata: The metadata describing the household characteristics.
-    
-    Returns:
-    - Final folder path containing processed occupancy data.
-    """
-
-    files, filter_files = get_initial_input_form_user(path, df_metadata)
+    files, filter_files = get_initial_input_from_user(path, df_metadata)
     if files is None:
         return
 
-    filtered_folder = filter_sensor_data(files, filter_files, output_folder="Filtered_Houses")
-    aggregated_folder = occupancy_hourly_average(filtered_folder)
-    final_folder = occupancy_status_profile(aggregated_folder, wd)
-    display_results(final_folder)
-
-    return final_folder
+    folder = filter_sensor_data(files, filter_files)
+    folder = occupancy_hourly_average(folder)
+    folder = occupancy_status_profile(folder, wd)
+    display_results(folder)
+    return folder
