@@ -105,25 +105,30 @@ def save_to_parquet(df, output_path):
         combined_table = pa.concat_tables([existing_table, table])  # Append new data
         pq.write_table(combined_table, output_path, compression="snappy")  # Overwrite file
         
-def occupancy_hourly_average(df_total: pd.DataFrame):
-    """ Starts the aggregation process with calculating the average reading for each day.
+def occupancy_hourly_average(df_path):
+    """Compute hourly occupancy averages efficiently from a saved Parquet file."""
     
-     Args:
-    - df_total: filtered dataframe with only occupancy data
-    
-    Returns:
-    - df_houses: dataframe for all houses with the following columns (date, hour, average_occ, Identifier, number_sensors)
-    """
-    df_total['number_sensors'] = df_total.filter(like='Occ').notna().sum(axis=1)
-    df_total['average_occ'] = df_total.filter(like='Occ').mean(axis=1)
-    
+    print("Loading filtered occupancy data from Parquet file...")
+    df_total = pd.read_parquet(df_path)  # Read from saved file
+
+    # Convert data types to optimize memory usage
+    df_total['number_sensors'] = df_total.filter(like='Occ').notna().sum(axis=1).astype('int8')
+    df_total['average_occ'] = df_total.filter(like='Occ').mean(axis=1).astype('float32')
+
     df_houses = df_total.groupby(['Identifier', 'date', 'hour']).agg({
         'average_occ': 'mean',
         'number_sensors': 'max'
     }).reset_index()
+
+    df_houses['Identifier'] = df_houses['Identifier'].astype('category')  # Reduce memory usage
+
+    print("First level of aggregation is complete and saved to Parquet.")
+
+    # Save the aggregated result as another Parquet file to optimize further steps
+    output_path = df_path.replace(".parquet", "_aggregated.parquet")
+    df_houses.to_parquet(output_path, index=False, engine="pyarrow", compression="snappy")
     
-    print("First level of Aggregation is done")
-    return df_houses
+    return output_path  # Return the path instead of DataFrame
 
 def get_quantile_inputs_from_users():
     message_label = widgets.Label('Please choose different values for the 3 hours types')
