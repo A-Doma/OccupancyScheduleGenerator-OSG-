@@ -175,113 +175,132 @@ def get_quantile_inputs_from_users():
     # You can return the widget objects if you need to access their values later
     return (dropdown_working, slider_working, dropdown_nonworking, slider_nonworking, dropdown_weekend, slider_weekend, dropdown_night_start, dropdown_night_end)
 
-def occupancy_status_profile(df_houses: pd.DataFrame, wd):
-    """ Convert the average occ to 0,1 depend on the selected metrics 
-
-     Args:
-    - df_houses: aggregated dataframe with average occupancy values
-    - wd: the results chosen by users from the sliders 
+def occupancy_status_profile(df_houses_path: str, wd):
+    """ Convert the average occupancy to 0 or 1 based on user-selected metrics.
+    
+    Args:
+    - df_houses_path: path to the aggregated Parquet file
+    - wd: widget inputs chosen by the user
     
     Returns:
-    - df_final: dataframe for all houses with the following columns (date_time, Identifier, day, hour, sensors with Occ data)
+    - df_final_path: path to the final processed Parquet file
     """
-    print("The final aggregation step just started")
-    # Extract the metrics
+    
+    print("Loading aggregated occupancy data...")
+    df_houses = pd.read_parquet(df_houses_path)  # Read from Parquet
+    
+    print("Starting the final aggregation step...")
+    
+    # Extract user-defined occupancy thresholds
     metric_values = {
         "working hours": wd[2 * [wd[i].value for i in range(0, 6, 2)].index("working hours") + 1].value,
         "nonworking hours": wd[2 * [wd[i].value for i in range(0, 6, 2)].index("nonworking hours") + 1].value,
         "weekends hours": wd[2 * [wd[i].value for i in range(0, 6, 2)].index("weekends hours") + 1].value
     }
+
     metric_working = metric_values['working hours'] / 100
     metric_nonworking = metric_values['nonworking hours'] / 100
     metric_weekend = metric_values['weekends hours'] / 100
-    night = [wd[-2].value, wd[-1].value]
+
+    night_start, night_end = wd[-2].value, wd[-1].value  # Night hours range
     
-    # Calculate the metrics
+    # Convert date column for better handling
     df_houses['date'] = pd.to_datetime(df_houses['date'])
     df_houses['weekday'] = df_houses['date'].dt.weekday
     df_houses['day_type'] = df_houses['weekday'].apply(lambda x: 'weekend' if x >= 5 else 'weekday')
-    quantile_data = []
+
+    # Progress Bar
     progress_bar = widgets.IntProgress(
-        value=0,
-        min=0,
-        max=len(df_houses['Identifier'].unique()),
-        description='Generating Occupancy Schedules:',
-        bar_style='',
-        style={'bar_color': 'blue'},
-        orientation='horizontal')
-    progress_bar.style.font_weight = 'bold'
-    progress_bar.style.font_size = '22px'
+        value=0, min=0, max=len(df_houses['Identifier'].unique()), 
+        description='Processing:', orientation='horizontal')
     display(progress_bar)
-    
+
+    quantile_data = []
     for house in df_houses['Identifier'].unique():
         df_h = df_houses[df_houses['Identifier'] == house]
-        # For working hours on weekdays
-        for hour in range(9, 18):  # From 9 to 17 inclusive
+
+        # Working hours (9AM - 5PM)
+        for hour in range(9, 18):  
             working_data = df_h[(df_h['hour'] == hour) & (df_h['weekday'] < 5)]
             quantile = working_data['average_occ'].quantile(metric_working)
             quantile_data.append({'Identifier': house, 'hour': hour, 'day_type': 'weekday', 'quantile': quantile, 'type': 'working_hours'})
 
-        # For non-working hours on weekdays
-        for hour in list(range(0, 9)) + list(range(18, 24)):  # Before 9 and after 17
+        # Non-working hours (before 9AM and after 5PM)
+        for hour in list(range(0, 9)) + list(range(18, 24)):  
             nonworking_data = df_h[(df_h['hour'] == hour) & (df_h['weekday'] < 5)]
             quantile = nonworking_data['average_occ'].quantile(metric_nonworking)
             quantile_data.append({'Identifier': house, 'hour': hour, 'day_type': 'weekday', 'quantile': quantile, 'type': 'nonworking_hours'})
 
-        # For hours during the weekend
-        for hour in range(24):  # All day for weekends
+        # Weekend hours (entire day)
+        for hour in range(24):  
             weekend_data = df_h[(df_h['hour'] == hour) & (df_h['weekday'] >= 5)]
             quantile = weekend_data['average_occ'].quantile(metric_weekend)
             quantile_data.append({'Identifier': house, 'hour': hour, 'day_type': 'weekend', 'quantile': quantile, 'type': 'weekend_hours'})
-        progress_bar.value += 1
-    
+        
+        progress_bar.value += 1  # Update progress bar
+
+    # Convert to DataFrame
     df_quantile = pd.DataFrame(quantile_data)
-    
-    # Compare and convert
+
+    # Merge quantile values with occupancy data
     df_final = df_houses.merge(df_quantile, on=['Identifier', 'hour', 'day_type'])
-    df_final['Occupancy'] = (df_final['average_occ'] >= df_final['quantile']).astype(int)
-    
-    # Additional step for night hours
-    night_start, night_end = night
+    df_final['Occupancy'] = (df_final['average_occ'] >= df_final['quantile']).astype('int8')  
+
+    # Handle night-time occupancy
     if night_start < night_end:
         night_mask = (df_final['hour'] >= night_start) & (df_final['hour'] <= night_end)
     else:
         night_mask = (df_final['hour'] >= night_start) | (df_final['hour'] <= night_end)
     
     night_occupied_mask = df_final.groupby('date')['average_occ'].transform(lambda x: (x > 0).any())
-    df_final.loc[night_mask & night_occupied_mask, 'Occupancy'] = 1
+    df_final.loc[night_mask & night_occupied_mask, 'Occupancy'] = 1  # Ensure at least one night-time occupancy if detected
 
+    # Convert to datetime and drop unnecessary columns
     df_final['date_time'] = df_final['date'] + pd.to_timedelta(df_final['hour'], unit='h')
     df_final = df_final.drop(['date', 'hour'], axis=1)
     df_final = df_final.sort_values(by=['Identifier', 'date_time'])
+
+    # Filter for valid occupancy readings (at least 2 sensors)
     df_final_leg = df_final[df_final['number_sensors'] >= 2]
-    columns_order = ['date_time', 'Identifier'] + [col for col in df_final_leg.columns if col not in ['date_time', 'Identifier']]
-    data_reordered = df_final_leg[columns_order]
-    data_reordered.reset_index(inplace=True)
-    data_reordered = data_reordered.drop(['index', 'weekday', 'type', 'average_occ'], axis=1)
-    data_reordered = data_reordered.drop_duplicates()
-    
-    print("The aggregation is done")
-    
-    return data_reordered
+
+    # Save to Parquet
+    output_path = df_houses_path.replace("_aggregated.parquet", "_final.parquet")
+    df_final_leg.to_parquet(output_path, index=False, engine="pyarrow", compression="snappy")
+
+    print(f"Final occupancy aggregation is complete. Data saved to {output_path}")
+
+    return output_path  # Return the final Parquet file path
 
 import matplotlib.pyplot as plt
-
-def display_results(df_final_leg: pd.DataFrame):
-    # Calculate the percentage of 1s (occupied) for each hour
+def display_results(df_final_path: str):
+    """Display aggregated occupancy probability and statistics.
+    
+    Args:
+    - df_final_path: path to the final processed Parquet file.
+    """
+    
+    print("Loading final occupancy data...")
+    df_final_leg = pd.read_parquet(df_final_path)  # Load from Parquet
+    
+    # Calculate the percentage of occupancy (1s) for each hour
     percentages = df_final_leg.groupby(df_final_leg['date_time'].dt.hour)['Occupancy'].mean()
 
-    # Plotting the percentage of occupied (1) values
-    percentages.plot(kind='line', figsize=(10, 6))
+    # Plot occupancy probability
+    plt.figure(figsize=(10, 6))
+    plt.plot(percentages.index, percentages.values, marker='o', linestyle='-', linewidth=2)
     plt.xlabel('Hour of the Day')
     plt.ylabel('Aggregated Occupied Probability')
     plt.title('Aggregated Occupied Probability by Hour of the Day')
-    plt.xticks(rotation=0)
+    plt.xticks(range(0, 24))
     plt.grid(True)
     plt.show()
-    
-    print(f"Number of houses: {len(df_final_leg.Identifier.unique())} houses")
-    print(f"Occupied hours: {round(percentages.mean() * 100, 0)}%")
+
+    # Print summary statistics
+    num_houses = len(df_final_leg['Identifier'].unique())
+    avg_occupied_hours = round(percentages.mean() * 100, 2)
+
+    print(f"Number of houses analyzed: {num_houses}")
+    print(f"Average percentage of occupied hours: {avg_occupied_hours}%")
 
 def save_csv(df_final_leg):
     # Get the path to the main user environment (home directory)
@@ -313,10 +332,8 @@ def start(path: str, df_metadata: pd.DataFrame):
     files, filter_files = get_initial_input_form_user(path, df_metadata)
     if files is None:
         return
-    df_total = filter_sensor_data(files, filter_files)
-    if df_total is None:
-        return
-    df_houses = occupancy_hourly_average(df_total)
+    df_total_path = filter_sensor_data(files, filter_files, output_file="filtered_data.parquet")
+    df_houses_path = occupancy_hourly_average(df_total_path)
     wd = get_quantile_inputs_from_users()
     
     # Extract individual widgets from the returned structure if needed
@@ -326,7 +343,7 @@ def start(path: str, df_metadata: pd.DataFrame):
     def update_results(button=None):
         with output_area:
             clear_output(wait=True)
-            df_final = occupancy_status_profile(df_houses, wd)
+            df_final_path = occupancy_status_profile(df_houses_path, wd)
             display_results(df_final)
             save_button = widgets.Button(description="Save CSV", button_style='success')
             save_button.on_click(lambda b: save_csv(df_final))
