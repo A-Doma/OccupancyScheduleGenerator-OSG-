@@ -3,6 +3,7 @@ The goal of this Python package is to convert the 5-min motion detection data pr
 # How to get started?
 + Install directly from github using `pip install --upgrade git+https://github.com/A-Doma/OccupancyScheduleGenerator-OSG-`
 + Launch Jupyter Notebook/Lab
++ Change working directory to the path of the raw data
 + `import OSG` and run the package with `OSG.start(..., df)` replacing ... with the path of the DYD raw data, and df with a dataframe of the metadata.
 # OSG.start():
 Once the `OSG.start()` is activated the interactive interface will initiate a sequence of operations as follows:
@@ -12,7 +13,6 @@ Once the `OSG.start()` is activated the interactive interface will initiate a se
 + Data Aggregation: The algorithms will proceed to aggregate the data by calculating the hourly readings from the sensors.
   
 + Occupancy Status Determination: The final step involves converting the aggregated hourly sensor data into a binary occupancy status, represented by 1 (occupied) and 0 (unoccupied) considering Rule-based Algorithms.
-
 ## Rule-based Algorithms: 
 After aggregating hourly reading from all sensors, the algorithms will ask for:
 + 3 distinct quantile percentages to establish thresholds for differentiating between occupied and unoccupied statuses during: working hours, non-working hours, and weekends.
