@@ -36,7 +36,7 @@ def get_initial_input_form_user(path: str, df_metadata: pd.DataFrame):
         return files_path, files
 
 def filter_sensor_data(files_path: list, files, output_file="filtered_data.parquet"):
-    """Filter occupancy data and save intermediate results to disk"""
+    """Filter occupancy data and save intermediate results to disk in batches"""
     
     progress_bar = widgets.IntProgress(
         value=0,
@@ -49,6 +49,11 @@ def filter_sensor_data(files_path: list, files, output_file="filtered_data.parqu
     display(progress_bar)
     
     output_path = os.path.join(os.getcwd(), output_file)
+    
+    # Delete existing file to avoid append issues
+    if os.path.exists(output_path):
+        os.remove(output_path)
+    
     all_data = []
     
     for file in files_path:
@@ -72,16 +77,15 @@ def filter_sensor_data(files_path: list, files, output_file="filtered_data.parqu
 
         # Write in batches to avoid memory issues
         if len(all_data) > 50:
-            pd.concat(all_data).to_parquet(output_path, mode='a', index=False)
+            df_batch = pd.concat(all_data, ignore_index=True)
+            df_batch.to_parquet(output_path, index=False, engine="pyarrow", compression="snappy", append=True)
             all_data = []  # Reset list to free memory
             
         progress_bar.value += 1
 
-    if not all_data:
-        print("No Occupancy data in the files")
-        return None
-    
-    pd.concat(all_data).to_parquet(output_path, mode='a', index=False)  # Final save
+    if all_data:
+        df_batch = pd.concat(all_data, ignore_index=True)
+        df_batch.to_parquet(output_path, index=False, engine="pyarrow", compression="snappy", append=True)  # Final save
     
     print("Occupancy Data is filtered and saved as a Parquet file.")
     return output_path  # Return file path instead of DataFrame
