@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+import pyarrow as pa
 import warnings
 warnings.filterwarnings('ignore')
 import ipywidgets as widgets
