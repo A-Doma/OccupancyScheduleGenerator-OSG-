@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+import pyarrow.parquet as pq
 import pyarrow as pa
 import warnings
 warnings.filterwarnings('ignore')
