@@ -35,16 +35,9 @@ def get_initial_input_form_user(path: str, df_metadata: pd.DataFrame):
         print("The filtering process is starting now")
         return files_path, files
 
-def filter_sensor_data(files_path: list, files):
-    """ Filter occupancy data.
+def filter_sensor_data(files_path: list, files, output_file="filtered_data.parquet"):
+    """Filter occupancy data and save intermediate results to disk"""
     
-    Args:
-    - files_path: list of all the raw data files with full paths
-    - files: list of house identifiers to filter
-    
-    Returns:
-    - df_total: dataframe for all houses with the following columns (date_time, Identifier, day, hour, sensors with Occ data)
-    """
     progress_bar = widgets.IntProgress(
         value=0,
         min=0,
@@ -53,39 +46,45 @@ def filter_sensor_data(files_path: list, files):
         bar_style='',
         style={'bar_color': 'blue'},
         orientation='horizontal')
-    progress_bar.style.font_weight = 'bold'
-    progress_bar.style.font_size = '22px'
     display(progress_bar)
     
+    output_path = os.path.join(os.getcwd(), output_file)
     all_data = []
+    
     for file in files_path:
         file_name, ext = os.path.splitext(file)
         if ext.lower() == '.parquet':
             df = pd.read_parquet(file)
         else:
-            df = pd.read_csv(file)
+            df = pd.read_csv(file, dtype={'Identifier': 'category'})  # Reduce memory usage
         
         for house in df.Identifier.unique():
             if house in files:
-                df_1 = df[df.Identifier == house]
-                active_columns = df_1.columns[df_1.notna().any()].tolist()
-                occ_columns = [col for col in active_columns if 'Occ' in col]
+                df_1 = df[df.Identifier == house].copy()
+                occ_columns = [col for col in df_1.columns if 'Occ' in col]
                 if occ_columns:
                     df_1 = df_1[['date_time', 'Identifier'] + occ_columns]
-                    df_1[occ_columns] = df_1[occ_columns].astype(float).replace({True: 1, False: 0})
+                    df_1[occ_columns] = df_1[occ_columns].astype(float)
                     df_1['date_time'] = pd.to_datetime(df_1['date_time'])
                     df_1['hour'] = df_1['date_time'].dt.hour
                     df_1['date'] = df_1['date_time'].dt.date 
                     all_data.append(df_1)
+
+        # Write in batches to avoid memory issues
+        if len(all_data) > 50:
+            pd.concat(all_data).to_parquet(output_path, mode='a', index=False)
+            all_data = []  # Reset list to free memory
+            
         progress_bar.value += 1
-    
+
     if not all_data:
         print("No Occupancy data in the files")
         return None
     
-    df_total = pd.concat(all_data, ignore_index=True)
-    print("Occupancy Data is filtered and now the aggregation process will start")
-    return df_total
+    pd.concat(all_data).to_parquet(output_path, mode='a', index=False)  # Final save
+    
+    print("Occupancy Data is filtered and saved as a Parquet file.")
+    return output_path  # Return file path instead of DataFrame
         
 def occupancy_hourly_average(df_total: pd.DataFrame):
     """ Starts the aggregation process with calculating the average reading for each day.
