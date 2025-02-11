@@ -219,10 +219,16 @@ def display_results(folder_path):
     print(f"Average occupied hours: {round(aggregated_percentages.mean() * 100, 2)}%")
 
 # =========================== FINAL EXECUTION FLOW ==============================
-def update_results(wd, folder_path):
-    """Recompute occupancy status and update results dynamically."""
-    folder = occupancy_status_profile(folder_path, wd)
-    display_results(folder)
+import ipywidgets as widgets
+from IPython.display import display, clear_output
+
+def update_results(wd, folder_path, output_area):
+    """Recompute occupancy status and update results when the button is clicked."""
+    with output_area:
+        clear_output(wait=True)  # Clear previous output to refresh the results
+        print("The final aggregation step just started")
+        folder = occupancy_status_profile(folder_path, wd)
+        display_results(folder)
 
 def start(path: str, df_metadata: pd.DataFrame):
     """Pipeline execution to filter, process, and analyze occupancy data interactively.
@@ -234,7 +240,7 @@ def start(path: str, df_metadata: pd.DataFrame):
     Returns:
     - Final folder path containing processed occupancy data.
     """
-    
+
     files, filter_files = get_initial_input_from_user(path, df_metadata)
     if files is None:
         return
@@ -245,15 +251,17 @@ def start(path: str, df_metadata: pd.DataFrame):
     # Collect user inputs
     wd = get_quantile_inputs_from_users()
 
-    # **Dynamic Update: Automatically update results when user changes values**
-    def on_change(change):
-        update_results(wd, folder)
+    # **Create Start Analysis Button**
+    start_button = widgets.Button(description="Start Analysis", button_style='primary')
+    output_area = widgets.Output()
 
-    wd[1].observe(on_change, names='value')  # Working Hours Slider
-    wd[3].observe(on_change, names='value')  # Nonworking Hours Slider
-    wd[5].observe(on_change, names='value')  # Weekend Hours Slider
+    def on_click(button):
+        update_results(wd, folder, output_area)
 
-    update_results(wd, folder)  # Initial results
+    start_button.on_click(on_click)
+
+    # Display the UI elements
+    display(start_button, output_area)
 
     return folder
 
