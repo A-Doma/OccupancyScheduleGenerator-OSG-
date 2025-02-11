@@ -36,7 +36,7 @@ def get_initial_input_form_user(path: str, df_metadata: pd.DataFrame):
         return files_path, files
 
 def filter_sensor_data(files_path: list, files, output_file="filtered_data.parquet"):
-    """Filter occupancy data and save intermediate results to disk in batches"""
+    """Filter occupancy data and save intermediate results to disk in chunks."""
     
     progress_bar = widgets.IntProgress(
         value=0,
@@ -50,7 +50,7 @@ def filter_sensor_data(files_path: list, files, output_file="filtered_data.parqu
     
     output_path = os.path.join(os.getcwd(), output_file)
     
-    # Delete existing file to avoid append issues
+    # Delete existing file before writing
     if os.path.exists(output_path):
         os.remove(output_path)
     
@@ -75,20 +75,33 @@ def filter_sensor_data(files_path: list, files, output_file="filtered_data.parqu
                     df_1['date'] = df_1['date_time'].dt.date 
                     all_data.append(df_1)
 
-        # Write in batches to avoid memory issues
-        if len(all_data) > 50:
+        # Process in chunks of 50 files
+        if len(all_data) >= 50:
             df_batch = pd.concat(all_data, ignore_index=True)
-            df_batch.to_parquet(output_path, index=False, engine="pyarrow", compression="snappy", append=True)
-            all_data = []  # Reset list to free memory
+            save_to_parquet(df_batch, output_path)
+            all_data = []  # Free memory
             
         progress_bar.value += 1
 
+    # Save remaining data
     if all_data:
         df_batch = pd.concat(all_data, ignore_index=True)
-        df_batch.to_parquet(output_path, index=False, engine="pyarrow", compression="snappy", append=True)  # Final save
-    
+        save_to_parquet(df_batch, output_path)
+
     print("Occupancy Data is filtered and saved as a Parquet file.")
     return output_path  # Return file path instead of DataFrame
+
+
+def save_to_parquet(df, output_path):
+    """Helper function to append data to a Parquet file correctly."""
+    table = pa.Table.from_pandas(df)
+
+    if not os.path.exists(output_path):
+        pq.write_table(table, output_path, compression="snappy")  # Create new file
+    else:
+        existing_table = pq.read_table(output_path)
+        combined_table = pa.concat_tables([existing_table, table])  # Append new data
+        pq.write_table(combined_table, output_path, compression="snappy")  # Overwrite file
         
 def occupancy_hourly_average(df_total: pd.DataFrame):
     """ Starts the aggregation process with calculating the average reading for each day.
