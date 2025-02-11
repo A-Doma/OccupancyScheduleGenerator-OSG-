@@ -2,8 +2,11 @@ import pandas as pd
 import os
 import pyarrow.parquet as pq
 import pyarrow as pa
-import widgets
-import matplotlib.pyplot as plt
+import warnings
+warnings.filterwarnings('ignore')
+import ipywidgets as widgets
+from IPython.display import display, clear_output
+
 
 # ========================== STEP 1: Filter Sensor Data ==========================
 def filter_sensor_data(files_path: list, files, output_folder="Filtered_Houses"):
