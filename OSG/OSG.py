@@ -115,6 +115,41 @@ def occupancy_hourly_average(folder_path):
     return folder_path  
 
 # ======================= STEP 4: Compute Occupancy Status ========================
+def get_quantile_inputs_from_users():
+    """Create UI widgets for user input on working, non-working, and weekend hours."""
+
+    message_label = widgets.Label('Please choose different values for the 3-hour types')
+
+    dropdown_working = widgets.Dropdown(options=['working hours', 'nonworking hours', 'weekend hours'], description='Metric (1)')
+    slider_working = widgets.IntSlider(value=10, min=0, max=100, step=5, description='Percentile (%)')
+
+    dropdown_nonworking = widgets.Dropdown(options=['nonworking hours', 'working hours', 'weekend hours'], description='Metric (2)')
+    slider_nonworking = widgets.IntSlider(value=10, min=0, max=100, step=5, description='Percentile (%)')
+
+    dropdown_weekend = widgets.Dropdown(options=['weekend hours', 'working hours', 'nonworking hours'], description='Metric (3)')
+    slider_weekend = widgets.IntSlider(value=10, min=0, max=100, step=5, description='Percentile (%)')
+
+    dropdown_night_start = widgets.Dropdown(options=list(range(24)), description='Night Start:')
+    dropdown_night_end = widgets.Dropdown(options=list(range(24)), description='Night End:')
+
+    def update_message(*args):
+        selected_values = [dropdown_working.value, dropdown_nonworking.value, dropdown_weekend.value]
+        if len(set(selected_values)) == 3:
+            message_label.value = 'Selection complete. Please also define night hours.'
+        else:
+            message_label.value = 'Please choose different values for the 3-hour types.'
+
+    dropdown_working.observe(update_message, names='value')
+    dropdown_nonworking.observe(update_message, names='value')
+    dropdown_weekend.observe(update_message, names='value')
+
+    # Display UI elements
+    display(message_label, dropdown_working, slider_working, dropdown_nonworking, slider_nonworking,
+            dropdown_weekend, slider_weekend, dropdown_night_start, dropdown_night_end)
+
+    return (dropdown_working, slider_working, dropdown_nonworking, slider_nonworking,
+            dropdown_weekend, slider_weekend, dropdown_night_start, dropdown_night_end)
+    
 def occupancy_status_profile(folder_path, wd):
     """Convert the average occupancy to binary (0 or 1) for each house separately.
     
@@ -180,12 +215,28 @@ def display_results(folder_path):
 
 # =========================== FINAL EXECUTION FLOW ==============================
 def start(path: str, df_metadata: pd.DataFrame):
+    """Pipeline execution to filter, process, and analyze occupancy data.
+    
+    Args:
+    - path: The path to the raw data.
+    - df_metadata: The metadata describing the household characteristics.
+    
+    Returns:
+    - Final folder path containing processed occupancy data.
+    """
+
     files, filter_files = get_initial_input_from_user(path, df_metadata)
     if files is None:
         return
 
     folder = filter_sensor_data(files, filter_files)
     folder = occupancy_hourly_average(folder)
+
+    # **Fix: Collect user-defined occupancy thresholds before proceeding**
+    wd = get_quantile_inputs_from_users()  # Collect user inputs
+
     folder = occupancy_status_profile(folder, wd)
     display_results(folder)
+
     return folder
+
