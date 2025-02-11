@@ -6,6 +6,7 @@ import warnings
 warnings.filterwarnings('ignore')
 import ipywidgets as widgets
 from IPython.display import display, clear_output
+import matplotlib.pyplot as plt
 
 # ========================== STEP 1: Get Initial Inputs ==========================
 def get_initial_input_from_user(path: str, df_metadata: pd.DataFrame):
