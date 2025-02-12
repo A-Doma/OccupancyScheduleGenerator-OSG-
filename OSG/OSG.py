@@ -157,15 +157,15 @@ def occupancy_status_profile(folder_path, wd):
     Returns:
     - folder_path: Path to the folder containing the final processed files.
     """
-    
+
     print("Applying occupancy status transformation...")
 
-    # Extract user-defined occupancy thresholds
-    metric_values = {
-        "working hours": wd[2 * [wd[i].value for i in range(0, 6, 2)].index("working hours") + 1].value / 100,
-        "nonworking hours": wd[2 * [wd[i].value for i in range(0, 6, 2)].index("nonworking hours") + 1].value / 100,
-        "weekends hours": wd[2 * [wd[i].value for i in range(0, 6, 2)].index("weekends hours") + 1].value / 100
-    }
+    # Extract user-defined occupancy thresholds (Fixed extraction logic)
+    metric_mapping = {wd[i].value: wd[i+1].value / 100 for i in range(0, 6, 2)}
+
+    metric_working = metric_mapping.get("working hours", 0.1)  # Default to 10% if missing
+    metric_nonworking = metric_mapping.get("nonworking hours", 0.1)
+    metric_weekend = metric_mapping.get("weekends hours", 0.1)
 
     night_start, night_end = wd[-2].value, wd[-1].value  # Night hours range
 
@@ -190,19 +190,19 @@ def occupancy_status_profile(folder_path, wd):
                 # Working hours (9AM - 5PM)
                 for hour in range(9, 18):  
                     working_data = df_h[(df_h['hour'] == hour) & (df_h['weekday'] < 5)]
-                    quantile = working_data['average_occ'].quantile(metric_values["working hours"])
+                    quantile = working_data['average_occ'].quantile(metric_working)
                     quantile_data.append({'Identifier': house, 'hour': hour, 'day_type': 'weekday', 'quantile': quantile, 'type': 'working_hours'})
 
                 # Non-working hours (before 9AM and after 5PM)
                 for hour in list(range(0, 9)) + list(range(18, 24)):  
                     nonworking_data = df_h[(df_h['hour'] == hour) & (df_h['weekday'] < 5)]
-                    quantile = nonworking_data['average_occ'].quantile(metric_values["nonworking hours"])
+                    quantile = nonworking_data['average_occ'].quantile(metric_nonworking)
                     quantile_data.append({'Identifier': house, 'hour': hour, 'day_type': 'weekday', 'quantile': quantile, 'type': 'nonworking_hours'})
 
                 # Weekend hours (entire day)
                 for hour in range(24):  
                     weekend_data = df_h[(df_h['hour'] == hour) & (df_h['weekday'] >= 5)]
-                    quantile = weekend_data['average_occ'].quantile(metric_values["weekends hours"])
+                    quantile = weekend_data['average_occ'].quantile(metric_weekend)
                     quantile_data.append({'Identifier': house, 'hour': hour, 'day_type': 'weekend', 'quantile': quantile, 'type': 'weekend_hours'})
 
             # Convert to DataFrame
@@ -232,8 +232,6 @@ def occupancy_status_profile(folder_path, wd):
 
     print("Occupancy transformation completed.")
     return folder_path
-
- 
 
 # =========================== STEP 5: Display Results ============================
 def display_results(folder_path):
