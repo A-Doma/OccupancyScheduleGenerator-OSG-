@@ -160,7 +160,7 @@ def occupancy_status_profile(folder_path, wd):
 
     print("Applying occupancy status transformation...")
 
-    # Extract user-defined occupancy thresholds
+    # ✅ Extract fresh user-defined occupancy thresholds every time
     metric_mapping = {wd[i].value: wd[i+1].value / 100 for i in range(0, 6, 2)}
 
     metric_working = metric_mapping.get("working hours", 0.1)  # Default to 10% if missing
@@ -208,22 +208,21 @@ def occupancy_status_profile(folder_path, wd):
                         quantile = weekend_data['average_occ'].quantile(metric_weekend)
                         quantile_data.append({'Identifier': house, 'hour': hour, 'day_type': 'weekend', 'quantile': quantile, 'type': 'weekend_hours'})
 
-            # Convert to DataFrame (Ensure it is not empty)
+            # Convert to DataFrame
             if quantile_data:
                 df_quantile = pd.DataFrame(quantile_data)
             else:
                 print(f"Warning: No quantile data found for {file}, skipping...")
                 continue
 
-            # Ensure all columns exist before merging
-            if 'quantile' not in df_quantile.columns:
-                print(f"Error: 'quantile' column missing in df_quantile for {file}")
-                continue
+            # ✅ Debugging: Ensure `df_quantile` has updated quantile values
+            print(f"Processing {file}: Updated quantiles:")
+            print(df_quantile.head())
 
             # Merge quantile values with occupancy data
             df_final = df_houses.merge(df_quantile, on=['Identifier', 'hour', 'day_type'], how='left')
 
-            # Ensure valid merge
+            # ✅ Debugging: Check merge success
             if 'quantile' not in df_final.columns:
                 print(f"Error: Merge failed, 'quantile' column missing in df_final for {file}")
                 continue
@@ -291,6 +290,16 @@ def update_results(wd, folder_path, output_area):
     with output_area:
         clear_output(wait=True)  # Clear previous output to refresh the results
         print("The final aggregation step just started")
+
+        # ✅ Ensure the latest widget values are used
+        wd_values = {wd[i].value: wd[i+1].value / 100 for i in range(0, 6, 2)}
+
+        # ✅ Force re-extraction of updated quantile values
+        metric_working = wd_values.get("working hours", 0.1)  # Default to 10% if missing
+        metric_nonworking = wd_values.get("nonworking hours", 0.1)
+        metric_weekend = wd_values.get("weekends hours", 0.1)
+
+        # ✅ Pass updated values to occupancy function
         folder = occupancy_status_profile(folder_path, wd)
         display_results(folder)
 
