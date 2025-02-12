@@ -214,11 +214,6 @@ def occupancy_status_profile(folder_path, wd):
             else:
                 print(f"Warning: No quantile data found for {file}, skipping...")
                 continue
-
-            # ✅ Debugging: Ensure `df_quantile` has updated quantile values
-            print(f"Processing {file}: Updated quantiles:")
-            print(df_quantile.head())
-
             # Merge quantile values with occupancy data
             df_final = df_houses.merge(df_quantile, on=['Identifier', 'hour', 'day_type'], how='left')
 
