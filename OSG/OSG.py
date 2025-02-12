@@ -160,7 +160,7 @@ def occupancy_status_profile(folder_path, wd):
 
     print("Applying occupancy status transformation...")
 
-    # ✅ Extract fresh user-defined occupancy thresholds every time
+    # Extract fresh user-defined occupancy thresholds every time
     metric_mapping = {wd[i].value: wd[i+1].value / 100 for i in range(0, 6, 2)}
 
     metric_working = metric_mapping.get("working hours", 0.1)  # Default to 10% if missing
@@ -217,7 +217,7 @@ def occupancy_status_profile(folder_path, wd):
             # Merge quantile values with occupancy data
             df_final = df_houses.merge(df_quantile, on=['Identifier', 'hour', 'day_type'], how='left')
 
-            # ✅ Debugging: Check merge success
+            # Debugging: Check merge success
             if 'quantile' not in df_final.columns:
                 print(f"Error: Merge failed, 'quantile' column missing in df_final for {file}")
                 continue
@@ -236,12 +236,15 @@ def occupancy_status_profile(folder_path, wd):
             # Ensure `date_time` exists
             df_final['date_time'] = df_final['date'] + pd.to_timedelta(df_final['hour'], unit='h')
             df_final = df_final.sort_values(by=['Identifier', 'date_time'])
+            df_final= df_final[df_final['number_sensors']>=2]
 
-            # Save processed data
-            df_final.to_parquet(file_path, index=False, engine="pyarrow", compression="snappy")
-
+            if not df_final.empty:
+                # Save processed data
+                df_final.to_parquet(file_path, index=False, engine="pyarrow", compression="snappy")
+            else:
+                os.remove(file_path)
             progress_bar.value += 1  # Update progress bar
-
+    
     print("Occupancy transformation completed.")
     return folder_path
 
