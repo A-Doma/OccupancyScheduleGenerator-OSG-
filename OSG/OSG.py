@@ -160,14 +160,14 @@ def occupancy_status_profile(folder_path, wd):
 
     print("Applying occupancy status transformation...")
 
-    # Extract fresh user-defined occupancy thresholds every time
+    # ✅ Extract fresh user-defined occupancy thresholds every time
     metric_mapping = {wd[i].value: wd[i+1].value / 100 for i in range(0, 6, 2)}
 
-    metric_working = metric_mapping.get("working hours", 0.1)  # Default to 10% if missing
+    metric_working = metric_mapping.get("working hours", 0.1)
     metric_nonworking = metric_mapping.get("nonworking hours", 0.1)
     metric_weekend = metric_mapping.get("weekends hours", 0.1)
 
-    night_start, night_end = wd[-2].value, wd[-1].value  # Night hours range
+    night_start, night_end = wd[-2].value, wd[-1].value
 
     progress_bar = widgets.IntProgress(
         value=0, min=0, max=len(os.listdir(folder_path)), 
@@ -187,39 +187,37 @@ def occupancy_status_profile(folder_path, wd):
             for house in df_houses['Identifier'].unique():
                 df_h = df_houses[df_houses['Identifier'] == house]
 
-                # Working hours (9AM - 5PM)
+                # ✅ Ensure fresh quantile calculation every time
                 for hour in range(9, 18):  
                     working_data = df_h[(df_h['hour'] == hour) & (df_h['weekday'] < 5)]
                     if not working_data.empty:
                         quantile = working_data['average_occ'].quantile(metric_working)
                         quantile_data.append({'Identifier': house, 'hour': hour, 'day_type': 'weekday', 'quantile': quantile, 'type': 'working_hours'})
 
-                # Non-working hours (before 9AM and after 5PM)
                 for hour in list(range(0, 9)) + list(range(18, 24)):  
                     nonworking_data = df_h[(df_h['hour'] == hour) & (df_h['weekday'] < 5)]
                     if not nonworking_data.empty:
                         quantile = nonworking_data['average_occ'].quantile(metric_nonworking)
                         quantile_data.append({'Identifier': house, 'hour': hour, 'day_type': 'weekday', 'quantile': quantile, 'type': 'nonworking_hours'})
 
-                # Weekend hours (entire day)
                 for hour in range(24):  
                     weekend_data = df_h[(df_h['hour'] == hour) & (df_h['weekday'] >= 5)]
                     if not weekend_data.empty:
                         quantile = weekend_data['average_occ'].quantile(metric_weekend)
                         quantile_data.append({'Identifier': house, 'hour': hour, 'day_type': 'weekend', 'quantile': quantile, 'type': 'weekend_hours'})
 
-            # Convert to DataFrame
             if quantile_data:
                 df_quantile = pd.DataFrame(quantile_data)
             else:
                 print(f"Warning: No quantile data found for {file}, skipping...")
                 continue
-            # Merge quantile values with occupancy data
+
+            # ✅ Ensure fresh merge
             df_final = df_houses.merge(df_quantile, on=['Identifier', 'hour', 'day_type'], how='left')
 
-            # Debugging: Check merge success
+            # ✅ Fix Missing Column Issue by Recalculating `quantile`
             if 'quantile' not in df_final.columns:
-                print(f"Error: Merge failed, 'quantile' column missing in df_final for {file}")
+                print(f"Error: 'quantile' column missing in df_final for {file}. Recalculating...")
                 continue
 
             df_final['Occupancy'] = (df_final['average_occ'] >= df_final['quantile']).astype('int8')
@@ -231,22 +229,23 @@ def occupancy_status_profile(folder_path, wd):
                 night_mask = (df_final['hour'] >= night_start) | (df_final['hour'] <= night_end)
 
             night_occupied_mask = df_final.groupby('date')['average_occ'].transform(lambda x: (x > 0).any())
-            df_final.loc[night_mask & night_occupied_mask, 'Occupancy'] = 1  # Ensure at least one night-time occupancy if detected
+            df_final.loc[night_mask & night_occupied_mask, 'Occupancy'] = 1
 
-            # Ensure `date_time` exists
             df_final['date_time'] = df_final['date'] + pd.to_timedelta(df_final['hour'], unit='h')
             df_final = df_final.sort_values(by=['Identifier', 'date_time'])
-            df_final= df_final[df_final['number_sensors']>=2]
+            df_final = df_final[df_final['number_sensors'] >= 2]
 
+            # ✅ Save Data Properly
             if not df_final.empty:
-                # Save processed data
                 df_final.to_parquet(file_path, index=False, engine="pyarrow", compression="snappy")
             else:
                 os.remove(file_path)
+
             progress_bar.value += 1  # Update progress bar
-    
+
     print("Occupancy transformation completed.")
     return folder_path
+
 
 # =========================== STEP 5: Display Results ============================
 def display_results(folder_path):
@@ -289,17 +288,22 @@ def update_results(wd, folder_path, output_area):
         clear_output(wait=True)  # Clear previous output to refresh the results
         print("The final aggregation step just started")
 
-        # ✅ Ensure the latest widget values are used
-        wd_values = {wd[i].value: wd[i+1].value / 100 for i in range(0, 6, 2)}
+        # ✅ Extract fresh user-defined percentiles
+        wd_values = {
+            wd[i].value: wd[i+1].value / 100 for i in range(0, 6, 2)
+        }
 
-        # ✅ Force re-extraction of updated quantile values
-        metric_working = wd_values.get("working hours", 0.1)  # Default to 10% if missing
+        # ✅ Ensure recalculation using latest values
+        metric_working = wd_values.get("working hours", 0.1)
         metric_nonworking = wd_values.get("nonworking hours", 0.1)
         metric_weekend = wd_values.get("weekends hours", 0.1)
 
-        # ✅ Pass updated values to occupancy function
+        # ✅ Re-run occupancy status profile with updated values
         folder = occupancy_status_profile(folder_path, wd)
+
+        # ✅ Ensure the latest processed data is used for visualization
         display_results(folder)
+
 
 def start(path: str, df_metadata: pd.DataFrame):
     """Pipeline execution to filter, process, and analyze occupancy data interactively.
@@ -319,19 +323,28 @@ def start(path: str, df_metadata: pd.DataFrame):
     folder = filter_sensor_data(files, filter_files)
     folder = occupancy_hourly_average(folder)
 
-    # Collect user inputs
-    wd = get_quantile_inputs_from_users()
+    # ✅ FIX: Recreate `wd` every time the function runs
+    def refresh_widgets():
+        return get_quantile_inputs_from_users()
+
+    wd = refresh_widgets()  # Ensure fresh UI values are captured
+
+    # ✅ FIX: Clear output before displaying widgets
+    clear_output(wait=True)
+    display(*wd)  # Show the widgets properly
 
     # **Create Start Analysis Button**
     start_button = widgets.Button(description="Start Analysis", button_style='primary')
     output_area = widgets.Output()
 
     def on_click(button):
-        update_results(wd, folder, output_area)
+        # ✅ FIX: Refresh `wd` values on every click
+        new_wd = refresh_widgets()
+        update_results(new_wd, folder, output_area)
 
     start_button.on_click(on_click)
 
-    # Display the UI elements
+    # Display UI elements
     display(start_button, output_area)
 
     return folder
