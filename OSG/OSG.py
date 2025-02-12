@@ -99,17 +99,13 @@ def occupancy_hourly_average(folder_path):
         if file.endswith(".parquet"):
             file_path = os.path.join(folder_path, file)
             df_total = pd.read_parquet(file_path)
-
             df_total['number_sensors'] = df_total.filter(like='Occ').notna().sum(axis=1).astype('int8')
             df_total['average_occ'] = df_total.filter(like='Occ').mean(axis=1).astype('float32')
-
             df_houses = df_total.groupby(['Identifier', 'date', 'hour']).agg({
                 'average_occ': 'mean',
                 'number_sensors': 'max'
             }).reset_index()
-
             df_houses['Identifier'] = df_houses['Identifier'].astype('category')
-
             df_houses.to_parquet(file_path, index=False, engine="pyarrow", compression="snappy")
 
     print("Hourly aggregation completed.")
@@ -150,7 +146,7 @@ def get_quantile_inputs_from_users():
 
     return (dropdown_working, slider_working, dropdown_nonworking, slider_nonworking,
             dropdown_weekend, slider_weekend, dropdown_night_start, dropdown_night_end)
-    
+
 def occupancy_status_profile(folder_path, wd):
     """Convert the average occupancy to binary (0 or 1) for each house separately.
     
@@ -161,7 +157,22 @@ def occupancy_status_profile(folder_path, wd):
     Returns:
     - folder_path: Path to the folder containing the final processed files.
     """
+    
     print("Applying occupancy status transformation...")
+
+    # Extract user-defined occupancy thresholds
+    metric_values = {
+        "working hours": wd[2 * [wd[i].value for i in range(0, 6, 2)].index("working hours") + 1].value / 100,
+        "nonworking hours": wd[2 * [wd[i].value for i in range(0, 6, 2)].index("nonworking hours") + 1].value / 100,
+        "weekends hours": wd[2 * [wd[i].value for i in range(0, 6, 2)].index("weekends hours") + 1].value / 100
+    }
+
+    night_start, night_end = wd[-2].value, wd[-1].value  # Night hours range
+
+    progress_bar = widgets.IntProgress(
+        value=0, min=0, max=len(os.listdir(folder_path)), 
+        description='Processing:', orientation='horizontal')
+    display(progress_bar)
 
     for file in os.listdir(folder_path):
         if file.endswith(".parquet"):
@@ -172,19 +183,56 @@ def occupancy_status_profile(folder_path, wd):
             df_houses['weekday'] = df_houses['date'].dt.weekday
             df_houses['day_type'] = df_houses['weekday'].apply(lambda x: 'weekend' if x >= 5 else 'weekday')
 
-            metric_working = wd[1].value / 100
-            metric_nonworking = wd[3].value / 100
-            metric_weekend = wd[5].value / 100
+            quantile_data = []
+            for house in df_houses['Identifier'].unique():
+                df_h = df_houses[df_houses['Identifier'] == house]
 
-            df_houses['Occupancy'] = (df_houses['average_occ'] >= df_houses.groupby(['Identifier', 'hour', 'day_type'])['average_occ'].transform(lambda x: x.quantile(metric_working if 'working' in x.name else metric_nonworking if 'nonworking' in x.name else metric_weekend))).astype('int8')
+                # Working hours (9AM - 5PM)
+                for hour in range(9, 18):  
+                    working_data = df_h[(df_h['hour'] == hour) & (df_h['weekday'] < 5)]
+                    quantile = working_data['average_occ'].quantile(metric_values["working hours"])
+                    quantile_data.append({'Identifier': house, 'hour': hour, 'day_type': 'weekday', 'quantile': quantile, 'type': 'working_hours'})
 
-            # ✅ Ensure `date_time` exists
-            df_houses['date_time'] = df_houses['date'] + pd.to_timedelta(df_houses['hour'], unit='h')
+                # Non-working hours (before 9AM and after 5PM)
+                for hour in list(range(0, 9)) + list(range(18, 24)):  
+                    nonworking_data = df_h[(df_h['hour'] == hour) & (df_h['weekday'] < 5)]
+                    quantile = nonworking_data['average_occ'].quantile(metric_values["nonworking hours"])
+                    quantile_data.append({'Identifier': house, 'hour': hour, 'day_type': 'weekday', 'quantile': quantile, 'type': 'nonworking_hours'})
 
-            df_houses.to_parquet(file_path, index=False, engine="pyarrow", compression="snappy")
+                # Weekend hours (entire day)
+                for hour in range(24):  
+                    weekend_data = df_h[(df_h['hour'] == hour) & (df_h['weekday'] >= 5)]
+                    quantile = weekend_data['average_occ'].quantile(metric_values["weekends hours"])
+                    quantile_data.append({'Identifier': house, 'hour': hour, 'day_type': 'weekend', 'quantile': quantile, 'type': 'weekend_hours'})
+
+            # Convert to DataFrame
+            df_quantile = pd.DataFrame(quantile_data)
+
+            # Merge quantile values with occupancy data
+            df_final = df_houses.merge(df_quantile, on=['Identifier', 'hour', 'day_type'])
+            df_final['Occupancy'] = (df_final['average_occ'] >= df_final['quantile']).astype('int8')
+
+            # Handle night-time occupancy
+            if night_start < night_end:
+                night_mask = (df_final['hour'] >= night_start) & (df_final['hour'] <= night_end)
+            else:
+                night_mask = (df_final['hour'] >= night_start) | (df_final['hour'] <= night_end)
+
+            night_occupied_mask = df_final.groupby('date')['average_occ'].transform(lambda x: (x > 0).any())
+            df_final.loc[night_mask & night_occupied_mask, 'Occupancy'] = 1  # Ensure at least one night-time occupancy if detected
+
+            # Ensure `date_time` exists
+            df_final['date_time'] = df_final['date'] + pd.to_timedelta(df_final['hour'], unit='h')
+            df_final = df_final.sort_values(by=['Identifier', 'date_time'])
+
+            # Save processed data
+            df_final.to_parquet(file_path, index=False, engine="pyarrow", compression="snappy")
+
+            progress_bar.value += 1  # Update progress bar
 
     print("Occupancy transformation completed.")
-    return folder_path  
+    return folder_path
+
  
 
 # =========================== STEP 5: Display Results ============================
