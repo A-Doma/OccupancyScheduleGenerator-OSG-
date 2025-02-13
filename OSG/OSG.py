@@ -203,7 +203,7 @@ def occupancy_status_profile(folder_path, wd):
             quantile_data.append({'hour': hour, 'day_type': 'weekend', 'quantile': quantile, 'type': 'weekend_hours'})
         df_quantile = pd.DataFrame(quantile_data)
         # Compare and convert
-        df_final = df_houses.merge(df_quantile, on=['Identifier', 'hour', 'day_type'])
+        df_final = df_houses.merge(df_quantile, on=['hour', 'day_type'])
         df_final['Occupancy'] = (df_final['average_occ'] >= df_final['quantile']).astype(int)
         # Additional step for night hours
         night_start, night_end = night
