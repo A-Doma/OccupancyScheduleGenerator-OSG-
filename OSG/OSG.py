@@ -275,21 +275,16 @@ def start(path: str, df_metadata: pd.DataFrame):
     if files is None:
         return
     output_folder = filter_sensor_data(files, filter_files)
-    if not os.listdir(output_folder):
-        return
     output_folder = occupancy_hourly_average(output_folder)
     wd = get_quantile_inputs_from_users()
-    
     # Extract individual widgets from the returned structure if needed
     dropdown_working, slider_working, dropdown_nonworking, slider_nonworking, dropdown_weekend, slider_weekend, dropdown_night_start, dropdown_night_end = wd
-    
     # Define the update_results function
     def update_results(button=None):
         with output_area:
             clear_output(wait=True)
             output_folder = occupancy_status_profile(output_folder, wd)
             display_results(output_folder)
-
     # Create a button that when clicked will run the update_results function
     start_button = widgets.Button(description="Start Analysis")
     start_button.on_click(update_results)
