@@ -182,6 +182,8 @@ def occupancy_status_profile(folder_path, wd):
     for file in os.listdir(folder_path):
         file_path = os.path.join(folder_path, file)
         df_houses = pd.read_parquet(file_path)
+        if 'quantile' in df_houses.columns:
+            df_houses= df_houses.drop(['quantile'], axis=1)
         df_houses['date'] = pd.to_datetime(df_houses['date'])
         df_houses['weekday'] = df_houses['date'].dt.weekday
         df_houses['day_type'] = df_houses['weekday'].apply(lambda x: 'weekend' if x >= 5 else 'weekday')
