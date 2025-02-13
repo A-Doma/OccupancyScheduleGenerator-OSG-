@@ -281,11 +281,11 @@ def start(path: str, df_metadata: pd.DataFrame):
     # Extract individual widgets from the returned structure if needed
     dropdown_working, slider_working, dropdown_nonworking, slider_nonworking, dropdown_weekend, slider_weekend, dropdown_night_start, dropdown_night_end = wd
     # Define the update_results function
-    def update_results(button=None, folder=output_folder):
+    def update_results(button=None, folder=None):  
         with output_area:
             clear_output(wait=True)
-            output_folder = occupancy_status_profile(output_folder, wd)
-            display_results(output_folder)
+            updated_folder = occupancy_status_profile(folder, wd)  
+            display_results(updated_folder) 
     # Create a button that when clicked will run the update_results function
     start_button = widgets.Button(description="Start Analysis")
     start_button.on_click(lambda b: update_results(b, output_folder))
