@@ -214,11 +214,10 @@ def occupancy_status_profile(folder_path, wd):
         night_occupied_mask = df_final.groupby('date')['average_occ'].transform(lambda x: (x > 0).any())
         df_final.loc[night_mask & night_occupied_mask, 'Occupancy'] = 1
         df_final['date_time'] = df_final['date'] + pd.to_timedelta(df_final['hour'], unit='h')
-        df_final = df_final.drop(['hour'], axis=1)
         df_final = df_final.sort_values(by=['Identifier', 'date_time'])
         df_final_leg = df_final[df_final['number_sensors'] >= 2]
         
-        columns_order = ['Identifier','date_time', 'date'] + [col for col in df_final_leg.columns if col not in ['date_time', 'Identifier', 'date']]
+        columns_order = ['Identifier','date_time', 'date', 'hour'] + [col for col in df_final_leg.columns if col not in ['date_time', 'Identifier', 'date', 'hour']]
         data_reordered = df_final_leg[columns_order]
         data_reordered.reset_index(inplace=True)
         data_reordered = data_reordered.drop(['index', 'weekday', 'type'], axis=1)
