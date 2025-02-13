@@ -260,6 +260,7 @@ def display_results(folder_path):
     print(f"Number of houses analyzed: {house_count}")
     print(f"Average occupied hours: {round(aggregated_percentages.mean() * 100, 2)}%")
 #--------------------------------------------------------------------------------------------------
+
 def start(path: str, df_metadata: pd.DataFrame):
     """Pipeline execution to filter, process, and analyze occupancy data interactively.
     
@@ -287,7 +288,7 @@ def start(path: str, df_metadata: pd.DataFrame):
             display_results(output_folder)
     # Create a button that when clicked will run the update_results function
     start_button = widgets.Button(description="Start Analysis")
-    start_button.on_click(update_results(output_folder))
+    start_button.on_click(lambda b: update_results(b, output_folder))
     start_button.style.font_weight = 'bold'
     start_button.style.font_size = '16px'
 
